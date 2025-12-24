@@ -282,13 +282,13 @@ namespace BearCar.Editor
                 Debug.Log("请手动将 Bear Prefab 添加到 NetworkManager 的 NetworkPrefabs 列表中");
             }
 
-            // 创建生成点
+            // 创建生成点（在小车后面，小车在 -4）
             GameObject spawnPoint1 = new GameObject("SpawnPoint1");
-            spawnPoint1.transform.position = new Vector3(-5, 0, 0);
+            spawnPoint1.transform.position = new Vector3(-6f, 0, 0); // 熊1 在车后
             spawnPoint1.transform.SetParent(nmObj.transform);
 
             GameObject spawnPoint2 = new GameObject("SpawnPoint2");
-            spawnPoint2.transform.position = new Vector3(-6, 0, 0);
+            spawnPoint2.transform.position = new Vector3(-7f, 0, 0); // 熊2 在熊1后
             spawnPoint2.transform.SetParent(nmObj.transform);
 
             // 设置 GameManager 引用 (通过 SerializedObject)
@@ -313,29 +313,39 @@ namespace BearCar.Editor
 
         private static void CreateSlopeScene()
         {
-            // 创建地面
-            GameObject ground = GameObject.Find("Ground");
-            if (ground == null)
-            {
-                ground = new GameObject("Ground");
-            }
+            // 删除旧的地面对象
+            var oldGround = GameObject.Find("Ground");
+            if (oldGround != null) DestroyImmediate(oldGround);
 
-            // 平地段
+            var oldGoal = GameObject.Find("Goal");
+            if (oldGoal != null) DestroyImmediate(oldGoal);
+
+            // 创建地面父对象
+            GameObject ground = new GameObject("Ground");
+
+            // ========== 场景布局 ==========
+            //
+            //  [熊1][熊2][车]  ----平地----  /坡道/  [终点]
+            //       -6   -4      -2~4         4~12      14
+            //
+            // ================================
+
+            // 平地段（起点区域，较长）
             GameObject flatGround = new GameObject("FlatGround");
             flatGround.transform.SetParent(ground.transform);
-            flatGround.transform.position = new Vector3(-8, -2, 0);
+            flatGround.transform.position = new Vector3(-2, -1.5f, 0);
 
             var flatSr = flatGround.AddComponent<SpriteRenderer>();
-            flatSr.sprite = CreatePlaceholderSprite(new Color(0.4f, 0.3f, 0.2f), 6f, 1f);
+            flatSr.sprite = CreatePlaceholderSprite(new Color(0.4f, 0.3f, 0.2f), 10f, 1f);
             flatSr.sortingOrder = -1;
 
             var flatCollider = flatGround.AddComponent<BoxCollider2D>();
-            flatCollider.size = new Vector2(6f, 1f);
+            flatCollider.size = new Vector2(10f, 1f);
 
-            // 坡道段
+            // 坡道段（在平地右边）
             GameObject slope = new GameObject("Slope");
             slope.transform.SetParent(ground.transform);
-            slope.transform.position = new Vector3(0, -1, 0);
+            slope.transform.position = new Vector3(8, 0.3f, 0);
             slope.transform.rotation = Quaternion.Euler(0, 0, 15); // 15度坡
 
             var slopeSr = slope.AddComponent<SpriteRenderer>();
@@ -353,22 +363,27 @@ namespace BearCar.Editor
                 slope.layer = groundLayer;
             }
 
-            // 创建终点
+            // 创建终点（坡道顶端）
             GameObject goal = new GameObject("Goal");
-            goal.transform.position = new Vector3(8, 3, 0);
+            goal.transform.position = new Vector3(14, 4, 0);
             var goalSr = goal.AddComponent<SpriteRenderer>();
             goalSr.sprite = CreatePlaceholderSprite(Color.green, 1f, 3f);
             goalSr.sortingOrder = -1;
 
-            // 在场景中创建 Cart
+            // 删除旧的 Cart
+            var oldCart = GameObject.Find("Cart");
+            if (oldCart != null) DestroyImmediate(oldCart);
+
+            // 在平地上创建 Cart
             var cartPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Cart.prefab");
             if (cartPrefab != null)
             {
                 var cart = (GameObject)PrefabUtility.InstantiatePrefab(cartPrefab);
-                cart.transform.position = new Vector3(-3, 0, 0);
+                cart.transform.position = new Vector3(-4, 0, 0); // 平地上，靠左
+                cart.name = "Cart";
             }
 
-            Debug.Log("坡道场景创建成功");
+            Debug.Log("坡道场景创建成功 - 小车在平地上");
         }
 
         private static void CreateUI()

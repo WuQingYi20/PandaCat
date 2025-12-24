@@ -223,16 +223,70 @@ namespace BearCar.Network
                 Debug.Log("[NetworkUI] NetworkTransport configured");
             }
 
+            // 尝试设置 Player Prefab（如果还没有设置）
+            TrySetupPlayerPrefab(nm);
+
             return true;
+        }
+
+        private void TrySetupPlayerPrefab(NetworkManager nm)
+        {
+            // 如果已经有 Player Prefab，跳过
+            if (nm.NetworkConfig.PlayerPrefab != null) return;
+
+            // 尝试从多个位置加载 Bear Prefab
+            GameObject bearPrefab = null;
+
+            // 1. 尝试从 Resources 加载
+            bearPrefab = Resources.Load<GameObject>("Bear");
+
+            // 2. 如果没有，检查 NetworkPrefabs 列表
+            if (bearPrefab == null && nm.NetworkConfig.Prefabs?.Prefabs != null)
+            {
+                foreach (var prefab in nm.NetworkConfig.Prefabs.Prefabs)
+                {
+                    if (prefab.Prefab != null && prefab.Prefab.name.Contains("Bear"))
+                    {
+                        bearPrefab = prefab.Prefab;
+                        break;
+                    }
+                }
+            }
+
+#if UNITY_EDITOR
+            // 3. 在编辑器中，尝试直接从 Assets 加载
+            if (bearPrefab == null)
+            {
+                bearPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Bear.prefab");
+            }
+#endif
+
+            if (bearPrefab != null)
+            {
+                // 确保 Prefab 有 NetworkObject
+                if (bearPrefab.GetComponent<NetworkObject>() != null)
+                {
+                    nm.NetworkConfig.PlayerPrefab = bearPrefab;
+                    Debug.Log("[NetworkUI] Player Prefab set to Bear");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[NetworkUI] Bear Prefab not found. Please create it using BearCar > Setup Scene menu.");
+            }
         }
 
         private void OnConnected(ulong clientId)
         {
+            Debug.Log($"[NetworkUI] Client {clientId} connected");
+
             if (NetworkManager.Singleton.LocalClientId == clientId)
             {
                 ShowInGamePanel();
                 UpdateStatus();
             }
+
+            // NetworkManager 会自动生成 PlayerPrefab，不需要手动生成
         }
 
         private void OnDisconnected(ulong clientId)
