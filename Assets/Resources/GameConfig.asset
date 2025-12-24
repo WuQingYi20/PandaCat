@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d6949900c7b410458705292b5336ea3, type: 3}
+  m_Name: GameConfig
+  m_EditorClassIdentifier: Assembly-CSharp::BearCar.Core.GameConfig
+  cartMass: 10
+  cartDrag: 0.5
+  singlePushForce: 50
+  doublePushMultiplier: 2
+  slopeAngle: 15
+  maxStamina: 5
+  staminaDrainRate: 1
+  staminaRecoveryRate: 0.5
+  exhaustedRecoveryDelay: 1
+  playerMoveSpeed: 5
