@@ -69,6 +69,11 @@ namespace BearCar.Editor
                 CreateUI();
             }
 
+            if (GUILayout.Button("7. 设置摄像机跟随", GUILayout.Height(30)))
+            {
+                SetupCamera();
+            }
+
             GUILayout.Space(20);
 
             GUI.backgroundColor = Color.green;
@@ -96,6 +101,7 @@ namespace BearCar.Editor
             SetupNetworkManager();
             CreateSlopeScene();
             CreateUI();
+            SetupCamera();
 
             Debug.Log("Bear Car 场景配置完成!");
             EditorUtility.DisplayDialog("完成", "Bear Car 场景配置完成!\n\n请手动配置物理层 (点击 '配置物理层' 按钮查看说明)", "OK");
@@ -472,6 +478,36 @@ namespace BearCar.Editor
             }
 
             Debug.Log("UI 创建成功");
+        }
+
+        private static void SetupCamera()
+        {
+            // 找到主摄像机
+            var mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                Debug.LogWarning("未找到主摄像机，请确保场景中有 MainCamera");
+                return;
+            }
+
+            // 检查是否已有 CameraFollow
+            var existingFollow = mainCamera.GetComponent<CameraFollow>();
+            if (existingFollow != null)
+            {
+                Debug.Log("CameraFollow 已存在于主摄像机上");
+                return;
+            }
+
+            // 添加 CameraFollow 组件
+            var cameraFollow = mainCamera.gameObject.AddComponent<CameraFollow>();
+
+            // 设置默认参数
+            var so = new SerializedObject(cameraFollow);
+            so.FindProperty("smoothSpeed").floatValue = 5f;
+            so.FindProperty("offset").vector3Value = new Vector3(3, 2, -10); // 稍微向前看
+            so.ApplyModifiedProperties();
+
+            Debug.Log("CameraFollow 已添加到主摄像机");
         }
 
         private static void SetupLayers()

@@ -37,7 +37,9 @@ namespace BearCar.Cart
 
         private Rigidbody2D rb;
         private HashSet<BearController> registeredBears = new HashSet<BearController>();
+        private HashSet<BearAI> registeredAIs = new HashSet<BearAI>();
         private float currentSlopeAngle = 0f;
+        private Vector2 slopeDirection = Vector2.right; // 沿坡面的移动方向
         private Collider2D cartCollider;
 
         public override void OnNetworkSpawn()
@@ -178,10 +180,31 @@ namespace BearCar.Cart
             if (hit.collider != null)
             {
                 currentSlopeAngle = Vector2.Angle(hit.normal, Vector2.up);
+
+                // 计算沿坡面的方向（垂直于法线，指向右上方为正）
+                // 法线旋转-90度得到沿坡面向右上的方向
+                slopeDirection = new Vector2(hit.normal.y, -hit.normal.x);
+
+                // 确保方向指向正X（前进方向）
+                if (slopeDirection.x < 0)
+                {
+                    slopeDirection = -slopeDirection;
+                }
             }
-            else if (config != null)
+            else
             {
-                currentSlopeAngle = config.slopeAngle;
+                // 没有检测到地面，使用配置的坡度或默认水平
+                if (config != null && config.slopeAngle > 0)
+                {
+                    currentSlopeAngle = config.slopeAngle;
+                    float angleRad = config.slopeAngle * Mathf.Deg2Rad;
+                    slopeDirection = new Vector2(Mathf.Cos(angleRad), Mathf.Sin(angleRad));
+                }
+                else
+                {
+                    currentSlopeAngle = 0f;
+                    slopeDirection = Vector2.right;
+                }
             }
         }
 
@@ -190,7 +213,7 @@ namespace BearCar.Cart
             if (!IsServer) return;
             if (config == null) return;
 
-            // 统计正在推车的熊
+            // 统计正在推车的熊（玩家）
             int pushers = 0;
             foreach (var bear in registeredBears)
             {
@@ -199,6 +222,16 @@ namespace BearCar.Cart
                     pushers++;
                 }
             }
+
+            // 统计 AI 熊
+            foreach (var ai in registeredAIs)
+            {
+                if (ai != null && ai.IsPushingCart)
+                {
+                    pushers++;
+                }
+            }
+
             ActivePushers.Value = pushers;
 
             // 检测是否在坡道上
@@ -237,16 +270,18 @@ namespace BearCar.Cart
             }
 
             // 应用移动（Kinematic 使用 MovePosition）
+            // 使用 slopeDirection 沿坡面移动，而不是只在X轴移动
             if (Mathf.Abs(movement) > 0.0001f)
             {
-                Vector3 newPos = transform.position + new Vector3(movement, 0, 0);
+                Vector2 moveVector = slopeDirection * movement;
+                Vector3 newPos = transform.position + new Vector3(moveVector.x, moveVector.y, 0);
                 rb.MovePosition(newPos);
             }
 
             // 调试日志（降低频率）
             if (Time.frameCount % 30 == 0)
             {
-                Debug.Log($"[Cart] Pushers: {pushers}, OnSlope: {onSlope}, Movement: {movement:F3}");
+                Debug.Log($"[Cart] Pushers: {pushers}, OnSlope: {onSlope}, Movement: {movement:F3}, SlopeDir: {slopeDirection}");
             }
         }
 
@@ -275,6 +310,18 @@ namespace BearCar.Cart
 
             registeredBears.Remove(bear);
             bear.SetNearCart(false);
+        }
+
+        public void RegisterAI(BearAI ai)
+        {
+            registeredAIs.Add(ai);
+            Debug.Log($"[Cart] AI registered, total AIs: {registeredAIs.Count}");
+        }
+
+        public void UnregisterAI(BearAI ai)
+        {
+            registeredAIs.Remove(ai);
+            Debug.Log($"[Cart] AI unregistered, total AIs: {registeredAIs.Count}");
         }
     }
 }

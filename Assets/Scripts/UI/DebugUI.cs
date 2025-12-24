@@ -11,6 +11,7 @@ namespace BearCar.UI
 
         private GUIStyle labelStyle;
         private GUIStyle boxStyle;
+        private GameObject aiInstance;
 
         private void Awake()
         {
@@ -24,6 +25,30 @@ namespace BearCar.UI
             {
                 normal = { background = MakeTexture(2, 2, new Color(0f, 0f, 0f, 0.7f)) }
             };
+        }
+
+        private void Update()
+        {
+            // 按 T 键切换 AI 熊
+            if (Input.GetKeyDown(KeyCode.T))
+            {
+                ToggleAI();
+            }
+        }
+
+        private void ToggleAI()
+        {
+            if (aiInstance == null)
+            {
+                aiInstance = new GameObject("BearAI");
+                aiInstance.transform.position = new Vector3(-8f, 1f, 0f);
+                aiInstance.AddComponent<BearAI>();
+            }
+            else
+            {
+                Destroy(aiInstance);
+                aiInstance = null;
+            }
         }
 
         private void OnGUI()
@@ -99,6 +124,19 @@ namespace BearCar.UI
             GUILayout.Label("=== Controls ===", labelStyle);
             GUILayout.Label("WASD/Arrows: Move", labelStyle);
             GUILayout.Label("E/Hold: Push Cart", labelStyle);
+            GUILayout.Label("T: Toggle AI Helper", labelStyle);
+
+            // AI 状态
+            if (aiInstance != null)
+            {
+                GUILayout.Space(5);
+                GUILayout.Label("=== AI Helper ===", labelStyle);
+                var ai = aiInstance.GetComponent<BearAI>();
+                if (ai != null)
+                {
+                    GUILayout.Label($"AI Pushing: {ai.IsPushingCart}", labelStyle);
+                }
+            }
 
             GUILayout.EndArea();
         }

@@ -19,21 +19,31 @@ namespace BearCar.Cart
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (!IsServer) return;
-
-            if (other.TryGetComponent<BearController>(out var bear))
+            // 玩家熊（需要服务器）
+            if (IsServer && other.TryGetComponent<BearController>(out var bear))
             {
                 cart?.RegisterBear(bear);
+            }
+
+            // AI 熊（本地检测）
+            if (other.TryGetComponent<BearAI>(out var ai))
+            {
+                cart?.RegisterAI(ai);
             }
         }
 
         private void OnTriggerExit2D(Collider2D other)
         {
-            if (!IsServer) return;
-
-            if (other.TryGetComponent<BearController>(out var bear))
+            // 玩家熊
+            if (IsServer && other.TryGetComponent<BearController>(out var bear))
             {
                 cart?.UnregisterBear(bear);
+            }
+
+            // AI 熊
+            if (other.TryGetComponent<BearAI>(out var ai))
+            {
+                cart?.UnregisterAI(ai);
             }
         }
     }
