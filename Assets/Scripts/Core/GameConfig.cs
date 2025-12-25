@@ -21,7 +21,7 @@ namespace BearCar.Core
 
         [Header("Slope")]
         [Tooltip("坡道角度 (度)")]
-        public float slopeAngle = 15f;
+        public float slopeAngle = 30f;
 
         [Header("Stamina")]
         [Tooltip("最大体力 (秒)")]
