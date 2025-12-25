@@ -20,21 +20,28 @@ namespace BearCar.Player
         private SpriteRenderer spriteRenderer;
         private Rigidbody2D rb;
         private BoxCollider2D col;
+        private float pushDirection = 0f;
 
         // 模拟的推车状态
         public bool IsPushingCart => isPushing;
+        public float PushDirection => pushDirection;
 
         private void Start()
         {
             // 设置视觉
             SetupVisuals();
 
-            // 找到车
+            // 找到车并注册
             targetCart = FindFirstObjectByType<CartController>();
+            if (targetCart != null)
+            {
+                targetCart.RegisterAI(this);
+            }
 
             // 添加物理组件
             rb = gameObject.AddComponent<Rigidbody2D>();
             rb.gravityScale = 1f;
+            rb.mass = 2f;  // 和玩家熊一样轻
             rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
             col = gameObject.AddComponent<BoxCollider2D>();
@@ -89,14 +96,31 @@ namespace BearCar.Player
                 // 到达位置，开始推车
                 rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
                 isPushing = true;
+
+                // 跟随玩家的推力方向
+                var playerBear = FindFirstObjectByType<BearController>();
+                if (playerBear != null && playerBear.IsPushing.Value)
+                {
+                    pushDirection = playerBear.PushDirection;
+                }
+                else
+                {
+                    pushDirection = 0f;  // 玩家没推，AI也不推
+                }
             }
 
             // 更新颜色表示状态
-            spriteRenderer.color = isPushing ? new Color(0.3f, 1f, 0.3f) : new Color(0.5f, 0.7f, 0.5f);
+            spriteRenderer.color = (isPushing && Mathf.Abs(pushDirection) > 0.1f)
+                ? new Color(0.3f, 1f, 0.3f)
+                : new Color(0.5f, 0.7f, 0.5f);
         }
 
         private void OnDestroy()
         {
+            if (targetCart != null)
+            {
+                targetCart.UnregisterAI(this);
+            }
             Debug.Log("[BearAI] AI 熊助手已移除。");
         }
     }

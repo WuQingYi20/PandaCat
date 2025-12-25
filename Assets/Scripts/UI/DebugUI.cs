@@ -122,8 +122,8 @@ namespace BearCar.UI
 
             // Controls Help
             GUILayout.Label("=== Controls ===", labelStyle);
-            GUILayout.Label("WASD/Arrows: Move", labelStyle);
-            GUILayout.Label("E/Hold: Push Cart", labelStyle);
+            GUILayout.Label("A/D: Move (free) / Push (attached)", labelStyle);
+            GUILayout.Label("E: Attach/Detach Cart", labelStyle);
             GUILayout.Label("T: Toggle AI Helper", labelStyle);
 
             // AI 状态

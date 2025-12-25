@@ -19,9 +19,15 @@ namespace BearCar.Cart
     {
         [SerializeField] private GameConfig config;
 
-        [Header("Movement Settings")]
-        [SerializeField] private float moveSpeed = 3f;
-        [SerializeField] private float slideSpeed = 2f;
+        [Header("Physics Settings")]
+        [Tooltip("车的质量，应该远大于熊(2)，让身体碰撞难以推动")]
+        [SerializeField] private float cartMass = 50f;
+
+        [Tooltip("每只熊的推力。50kg车在15°坡: 重力分量≈127N，设130让1熊刚好维持")]
+        [SerializeField] private float pushForcePerBear = 130f;
+
+        [Tooltip("线性阻力，模拟滚动摩擦。值越高车越难被撞动")]
+        [SerializeField] private float linearDrag = 10f;
 
         public NetworkVariable<int> ActivePushers = new(
             0,
@@ -39,8 +45,12 @@ namespace BearCar.Cart
         private HashSet<BearController> registeredBears = new HashSet<BearController>();
         private HashSet<BearAI> registeredAIs = new HashSet<BearAI>();
         private float currentSlopeAngle = 0f;
-        private Vector2 slopeDirection = Vector2.right; // 沿坡面的移动方向
+        private Vector2 slopeNormal = Vector2.up;
         private Collider2D cartCollider;
+        private List<Collider2D> bearColliders = new List<Collider2D>();
+
+        // 推车位置管理（最多2个位置）
+        private BearController[] pushSlots = new BearController[2];
 
         public override void OnNetworkSpawn()
         {
@@ -52,13 +62,31 @@ namespace BearCar.Cart
                 config = Resources.Load<GameConfig>("GameConfig");
             }
 
-            // 设置为 Kinematic - 完全由代码控制移动
-            rb.bodyType = RigidbodyType2D.Kinematic;
+            // 设置为 Dynamic - 真实物理驱动
+            rb.bodyType = RigidbodyType2D.Dynamic;
 
-            // 车的主碰撞体设为 Trigger，避免与地面碰撞反弹
+            // 强制使用固定值（避免 Inspector 旧值问题）
+            rb.mass = 500f;          // 车非常重，防止被熊撞动
+            rb.linearDamping = 0.5f; // 低阻力，允许滑动
+            rb.angularDamping = 5f;
+            rb.gravityScale = 1f;
+            rb.constraints = RigidbodyConstraints2D.FreezeRotation; // 防止翻车
+
+            Debug.Log($"[Cart] 物理设置: 质量={rb.mass}, 阻力={rb.linearDamping}");
+
+            // 车的碰撞体保持普通碰撞（不是 Trigger）
             if (cartCollider != null)
             {
-                cartCollider.isTrigger = true;
+                cartCollider.isTrigger = false;
+
+                // 添加物理材质
+                // 30°坡需要 friction < tan(30°) ≈ 0.577 才能滑动
+                PhysicsMaterial2D cartMaterial = new PhysicsMaterial2D("CartMaterial")
+                {
+                    friction = 0.25f,  // 允许在坡上滑动
+                    bounciness = 0f    // 不反弹
+                };
+                cartCollider.sharedMaterial = cartMaterial;
             }
 
             // 确保车辆可见
@@ -68,32 +96,78 @@ namespace BearCar.Cart
             SetupPushZone();
         }
 
-        private void SetupCollisions()
+        // ========== 碰撞处理：防止被熊撞动 ==========
+        private Vector2 velocityBeforeCollision;
+
+        private void OnCollisionEnter2D(Collision2D collision)
         {
-            // 让车的主碰撞体不与熊碰撞
-            // 但推车区域（Trigger）仍然检测熊
-            if (cartCollider != null)
+            if (rb == null) return;
+
+            // 收集熊的碰撞体
+            var bearCollider = collision.collider;
+            bool isBear = collision.gameObject.GetComponent<BearController>() != null ||
+                          collision.gameObject.GetComponent<BearAI>() != null;
+
+            if (isBear && !bearColliders.Contains(bearCollider))
             {
-                var bears = FindObjectsByType<BearController>(FindObjectsSortMode.None);
-                foreach (var bear in bears)
+                bearColliders.Add(bearCollider);
+            }
+
+            // 如果没人推车，且是被熊撞的，抵消碰撞冲量
+            if (ActivePushers.Value == 0 && isBear)
+            {
+                rb.linearVelocity = velocityBeforeCollision;
+            }
+        }
+
+        private void OnCollisionExit2D(Collision2D collision)
+        {
+            // 移除离开的熊碰撞体
+            var bearCollider = collision.collider;
+            bearColliders.Remove(bearCollider);
+        }
+
+        private void SetBearCollisionIgnored(bool ignore)
+        {
+            if (cartCollider == null) return;
+
+            // 使用吸附位置的熊的碰撞体，而不是依赖碰撞事件
+            foreach (var bear in pushSlots)
+            {
+                if (bear != null)
                 {
-                    var bearCollider = bear.GetComponent<Collider2D>();
-                    if (bearCollider != null)
+                    var bearCol = bear.GetComponent<Collider2D>();
+                    if (bearCol != null)
                     {
-                        Physics2D.IgnoreCollision(cartCollider, bearCollider, true);
+                        Physics2D.IgnoreCollision(cartCollider, bearCol, ignore);
                     }
+                }
+            }
+
+            // 也处理 bearColliders 列表（用于非吸附的熊）
+            foreach (var bearCol in bearColliders)
+            {
+                if (bearCol != null)
+                {
+                    Physics2D.IgnoreCollision(cartCollider, bearCol, ignore);
                 }
             }
         }
 
-        // 当新熊生成时也要忽略碰撞
-        public void IgnoreCollisionWithBear(Collider2D bearCollider)
+        private void FixedUpdate()
         {
-            if (cartCollider != null && bearCollider != null)
-            {
-                Physics2D.IgnoreCollision(cartCollider, bearCollider, true);
-            }
+            if (rb == null) return;
+
+            // 保存碰撞前的速度
+            velocityBeforeCollision = rb.linearVelocity;
+
+            if (!IsServer) return;
+
+            DetectSlope();
+            ApplyForces();
+            UpdateState();
         }
+
 
         private void SetupPushZone()
         {
@@ -159,15 +233,6 @@ namespace BearCar.Cart
             Debug.Log($"[Cart] Visuals set up at position {transform.position}");
         }
 
-        private void FixedUpdate()
-        {
-            if (!IsServer) return;
-
-            DetectSlope();
-            ApplyForces();
-            UpdateState();
-        }
-
         private void DetectSlope()
         {
             RaycastHit2D hit = Physics2D.Raycast(
@@ -180,16 +245,7 @@ namespace BearCar.Cart
             if (hit.collider != null)
             {
                 currentSlopeAngle = Vector2.Angle(hit.normal, Vector2.up);
-
-                // 计算沿坡面的方向（垂直于法线，指向右上方为正）
-                // 法线旋转-90度得到沿坡面向右上的方向
-                slopeDirection = new Vector2(hit.normal.y, -hit.normal.x);
-
-                // 确保方向指向正X（前进方向）
-                if (slopeDirection.x < 0)
-                {
-                    slopeDirection = -slopeDirection;
-                }
+                slopeNormal = hit.normal;
             }
             else
             {
@@ -198,12 +254,12 @@ namespace BearCar.Cart
                 {
                     currentSlopeAngle = config.slopeAngle;
                     float angleRad = config.slopeAngle * Mathf.Deg2Rad;
-                    slopeDirection = new Vector2(Mathf.Cos(angleRad), Mathf.Sin(angleRad));
+                    slopeNormal = new Vector2(-Mathf.Sin(angleRad), Mathf.Cos(angleRad));
                 }
                 else
                 {
                     currentSlopeAngle = 0f;
-                    slopeDirection = Vector2.right;
+                    slopeNormal = Vector2.up;
                 }
             }
         }
@@ -211,89 +267,77 @@ namespace BearCar.Cart
         private void ApplyForces()
         {
             if (!IsServer) return;
-            if (config == null) return;
 
-            // 统计正在推车的熊（玩家）
-            int pushers = 0;
-            foreach (var bear in registeredBears)
+            // 计算总推力方向（每个熊的推力方向累加）
+            float totalPushInput = 0f;
+            int activePushers = 0;
+
+            foreach (var bear in pushSlots)
             {
                 if (bear != null && bear.IsPushing.Value && bear.HasStamina)
                 {
-                    pushers++;
+                    totalPushInput += bear.PushDirection;
+                    activePushers++;
                 }
             }
 
-            // 统计 AI 熊
+            // 统计 AI 熊（跟随玩家方向）
             foreach (var ai in registeredAIs)
             {
-                if (ai != null && ai.IsPushingCart)
+                if (ai != null && ai.IsPushingCart && Mathf.Abs(ai.PushDirection) > 0.1f)
                 {
-                    pushers++;
+                    totalPushInput += ai.PushDirection;
+                    activePushers++;
                 }
             }
 
-            ActivePushers.Value = pushers;
+            ActivePushers.Value = activePushers;
 
-            // 检测是否在坡道上
-            bool onSlope = currentSlopeAngle > 5f;
+            // 计算沿坡面的方向
+            Vector2 slopeRight = new Vector2(slopeNormal.y, -slopeNormal.x);
+            if (slopeRight.x < 0) slopeRight = -slopeRight;
 
-            // 计算移动
-            float movement = 0f;
+            // 施加推力 - 使用 AddForce 对抗质量和阻力
+            if (Mathf.Abs(totalPushInput) > 0.1f)
+            {
+                float forcePerBear = 3400f;  // 每只熊 3400N
+                float totalForce = forcePerBear * totalPushInput;
 
-            if (pushers == 0)
-            {
-                // 无人推
-                if (onSlope)
-                {
-                    // 坡道上下滑
-                    movement = -slideSpeed * Time.fixedDeltaTime;
-                }
-                // 平地上静止（Kinematic 不会被撞动）
-            }
-            else if (pushers == 1)
-            {
-                if (onSlope)
-                {
-                    // 坡道上：1人只能维持，不动
-                    movement = 0f;
-                }
-                else
-                {
-                    // 平地上：1人可以推动
-                    movement = moveSpeed * Time.fixedDeltaTime;
-                }
-            }
-            else
-            {
-                // 2人推：可以推动（坡道和平地都可以）
-                movement = moveSpeed * Time.fixedDeltaTime;
+                // 沿坡面方向施加力
+                Vector2 pushForce = slopeRight * totalForce;
+                rb.AddForce(pushForce, ForceMode2D.Force);
             }
 
-            // 应用移动（Kinematic 使用 MovePosition）
-            // 使用 slopeDirection 沿坡面移动，而不是只在X轴移动
-            if (Mathf.Abs(movement) > 0.0001f)
-            {
-                Vector2 moveVector = slopeDirection * movement;
-                Vector3 newPos = transform.position + new Vector3(moveVector.x, moveVector.y, 0);
-                rb.MovePosition(newPos);
-            }
-
-            // 调试日志（降低频率）
+            // 调试日志
             if (Time.frameCount % 30 == 0)
             {
-                Debug.Log($"[Cart] Pushers: {pushers}, OnSlope: {onSlope}, Movement: {movement:F3}, SlopeDir: {slopeDirection}");
+                int attachedCount = 0;
+                foreach (var bear in pushSlots) if (bear != null) attachedCount++;
+                Debug.Log($"[Cart] Attached: {attachedCount}, Pushers: {activePushers}, Input: {totalPushInput:F1}, Vel: {rb.linearVelocity:F2}");
             }
         }
 
         private void UpdateState()
         {
-            State.Value = ActivePushers.Value switch
+            float velocityX = rb.linearVelocity.x;
+            bool onSlope = currentSlopeAngle > 5f;
+
+            if (ActivePushers.Value == 0)
             {
-                0 when currentSlopeAngle > 1f => CartState.Sliding,
-                0 => CartState.Idle,
-                1 => CartState.Holding,
-                _ => CartState.Advancing
-            };
+                State.Value = (onSlope && velocityX < -0.1f) ? CartState.Sliding : CartState.Idle;
+            }
+            else if (velocityX > 0.5f)
+            {
+                State.Value = CartState.Advancing;
+            }
+            else if (velocityX < -0.1f)
+            {
+                State.Value = CartState.Sliding;
+            }
+            else
+            {
+                State.Value = CartState.Holding;
+            }
         }
 
         public void RegisterBear(BearController bear)
@@ -301,7 +345,7 @@ namespace BearCar.Cart
             if (!IsServer) return;
 
             registeredBears.Add(bear);
-            bear.SetNearCart(true);
+            bear.SetNearCart(true, this);
         }
 
         public void UnregisterBear(BearController bear)
@@ -309,7 +353,7 @@ namespace BearCar.Cart
             if (!IsServer) return;
 
             registeredBears.Remove(bear);
-            bear.SetNearCart(false);
+            bear.SetNearCart(false, null);
         }
 
         public void RegisterAI(BearAI ai)
@@ -322,6 +366,55 @@ namespace BearCar.Cart
         {
             registeredAIs.Remove(ai);
             Debug.Log($"[Cart] AI unregistered, total AIs: {registeredAIs.Count}");
+        }
+
+        // ========== 推车位置管理 ==========
+        public int GetAvailablePushSlot()
+        {
+            for (int i = 0; i < pushSlots.Length; i++)
+            {
+                if (pushSlots[i] == null)
+                    return i;
+            }
+            return -1;  // 没有空位
+        }
+
+        public void OccupyPushSlot(int slotIndex, BearController bear)
+        {
+            if (slotIndex >= 0 && slotIndex < pushSlots.Length)
+            {
+                pushSlots[slotIndex] = bear;
+
+                // 吸附时忽略碰撞
+                if (bear != null && cartCollider != null)
+                {
+                    var bearCol = bear.GetComponent<Collider2D>();
+                    if (bearCol != null)
+                    {
+                        Physics2D.IgnoreCollision(cartCollider, bearCol, true);
+                        Debug.Log($"[Cart] 忽略碰撞: Bear slot {slotIndex}");
+                    }
+                }
+            }
+        }
+
+        public void ReleasePushSlot(int slotIndex)
+        {
+            if (slotIndex >= 0 && slotIndex < pushSlots.Length)
+            {
+                // 先恢复碰撞，再移除引用
+                var bear = pushSlots[slotIndex];
+                if (bear != null && cartCollider != null)
+                {
+                    var bearCol = bear.GetComponent<Collider2D>();
+                    if (bearCol != null)
+                    {
+                        Physics2D.IgnoreCollision(cartCollider, bearCol, false);
+                        Debug.Log($"[Cart] 恢复碰撞: Bear slot {slotIndex}");
+                    }
+                }
+                pushSlots[slotIndex] = null;
+            }
         }
     }
 }
