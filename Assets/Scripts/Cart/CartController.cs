@@ -49,11 +49,12 @@ namespace BearCar.Cart
         private Collider2D cartCollider;
         private List<Collider2D> bearColliders = new List<Collider2D>();
 
-        // 推车位置管理（最多2个位置）
-        private BearController[] pushSlots = new BearController[2];
+        // 推车位置管理（左右各2个位置，共4个）
+        // 0,1 = 左侧（推车前进），2,3 = 右侧（推车后退）
+        private BearController[] pushSlots = new BearController[4];
 
         // 本地玩家推车位置（本地多人模式）
-        private LocalBearController[] localPushSlots = new LocalBearController[2];
+        private LocalBearController[] localPushSlots = new LocalBearController[4];
         private HashSet<LocalBearController> registeredLocalBears = new HashSet<LocalBearController>();
 
         // 是否为纯本地模式（无网络）
@@ -178,15 +179,33 @@ namespace BearCar.Cart
 
         private void SetupPushZone()
         {
-            // 查找或创建推车区域
-            Transform pushZoneTransform = transform.Find("PushZone");
+            // 删除旧的 PushZone（如果存在）
+            Transform oldPushZone = transform.Find("PushZone");
+            if (oldPushZone != null)
+            {
+                Destroy(oldPushZone.gameObject);
+                Debug.Log("[Cart] 删除旧的 PushZone");
+            }
+
+            // 创建左侧推车区域（车后方，推动前进）
+            SetupSinglePushZone("PushZoneLeft", new Vector3(-1.5f, 0, 0));
+
+            // 创建右侧推车区域（车前方，推动后退）
+            SetupSinglePushZone("PushZoneRight", new Vector3(1.5f, 0, 0));
+
+            Debug.Log("[Cart] PushZones setup complete (Left & Right)");
+        }
+
+        private void SetupSinglePushZone(string zoneName, Vector3 localPosition)
+        {
+            Transform pushZoneTransform = transform.Find(zoneName);
             GameObject pushZone;
 
             if (pushZoneTransform == null)
             {
-                pushZone = new GameObject("PushZone");
+                pushZone = new GameObject(zoneName);
                 pushZone.transform.SetParent(transform);
-                pushZone.transform.localPosition = new Vector3(-1.5f, 0, 0); // 车后方
+                pushZone.transform.localPosition = localPosition;
             }
             else
             {
@@ -200,15 +219,13 @@ namespace BearCar.Cart
                 col = pushZone.AddComponent<BoxCollider2D>();
             }
             col.isTrigger = true;
-            col.size = new Vector2(3f, 2f); // 足够大，容纳两只熊
+            col.size = new Vector2(2f, 2f); // 足够大，容纳两只熊
 
             // 确保有 CartPushZone 脚本
             if (pushZone.GetComponent<CartPushZone>() == null)
             {
                 pushZone.AddComponent<CartPushZone>();
             }
-
-            Debug.Log($"[Cart] PushZone setup complete, size: {col.size}");
         }
 
         private void EnsureVisuals()
@@ -397,6 +414,11 @@ namespace BearCar.Cart
         }
 
         // ========== 推车位置管理 ==========
+        // 槽位布局: 0,1 = 左侧, 2,3 = 右侧
+
+        /// <summary>
+        /// 获取任意可用槽位
+        /// </summary>
         public int GetAvailablePushSlot()
         {
             for (int i = 0; i < pushSlots.Length; i++)
@@ -404,8 +426,42 @@ namespace BearCar.Cart
                 if (pushSlots[i] == null)
                     return i;
             }
-            return -1;  // 没有空位
+            return -1;
         }
+
+        /// <summary>
+        /// 根据玩家位置获取最近侧的可用槽位
+        /// </summary>
+        public int GetAvailablePushSlotBySide(Vector3 playerPos)
+        {
+            bool isLeftSide = playerPos.x < transform.position.x;
+            return isLeftSide ? GetAvailableLeftSlot() : GetAvailableRightSlot();
+        }
+
+        /// <summary>
+        /// 获取左侧可用槽位 (0,1)
+        /// </summary>
+        public int GetAvailableLeftSlot()
+        {
+            if (pushSlots[0] == null) return 0;
+            if (pushSlots[1] == null) return 1;
+            return -1;
+        }
+
+        /// <summary>
+        /// 获取右侧可用槽位 (2,3)
+        /// </summary>
+        public int GetAvailableRightSlot()
+        {
+            if (pushSlots[2] == null) return 2;
+            if (pushSlots[3] == null) return 3;
+            return -1;
+        }
+
+        /// <summary>
+        /// 判断槽位是左侧还是右侧
+        /// </summary>
+        public static bool IsLeftSlot(int slotIndex) => slotIndex < 2;
 
         public void OccupyPushSlot(int slotIndex, BearController bear)
         {
@@ -467,6 +523,29 @@ namespace BearCar.Cart
                 if (localPushSlots[i] == null)
                     return i;
             }
+            return -1;
+        }
+
+        /// <summary>
+        /// 根据玩家位置获取本地玩家最近侧的可用槽位
+        /// </summary>
+        public int GetAvailableLocalPushSlotBySide(Vector3 playerPos)
+        {
+            bool isLeftSide = playerPos.x < transform.position.x;
+            return isLeftSide ? GetAvailableLocalLeftSlot() : GetAvailableLocalRightSlot();
+        }
+
+        public int GetAvailableLocalLeftSlot()
+        {
+            if (localPushSlots[0] == null) return 0;
+            if (localPushSlots[1] == null) return 1;
+            return -1;
+        }
+
+        public int GetAvailableLocalRightSlot()
+        {
+            if (localPushSlots[2] == null) return 2;
+            if (localPushSlots[3] == null) return 3;
             return -1;
         }
 

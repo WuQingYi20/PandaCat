@@ -165,8 +165,8 @@ namespace BearCar.Player
         {
             if (attachedCart == null) return;
 
-            // 获取可用的推车位置
-            pushSlotIndex = attachedCart.GetAvailablePushSlot();
+            // 根据玩家位置获取对应侧的可用槽位
+            pushSlotIndex = attachedCart.GetAvailablePushSlotBySide(transform.position);
             if (pushSlotIndex < 0)
             {
                 Debug.Log("[Bear] 没有可用的推车位置");
@@ -177,7 +177,8 @@ namespace BearCar.Player
             IsAttached.Value = true;
             rb.bodyType = RigidbodyType2D.Kinematic;
 
-            Debug.Log($"[Bear] 吸附到推车位置 {pushSlotIndex}");
+            string side = CartController.IsLeftSlot(pushSlotIndex) ? "左侧" : "右侧";
+            Debug.Log($"[Bear] 吸附到{side}推车位置 {pushSlotIndex}");
         }
 
         private void DetachFromCart()
@@ -199,10 +200,15 @@ namespace BearCar.Player
         {
             if (attachedCart == null) return transform.position;
 
-            // 推车位置：车后方，两个位置左右分布
             Vector3 cartPos = attachedCart.transform.position;
-            float offsetX = -1.5f;  // 车后方
-            float offsetY = (pushSlotIndex == 0) ? 0.3f : -0.3f;  // 上下分布
+
+            // 槽位布局: 0,1 = 左侧（车后方），2,3 = 右侧（车前方）
+            bool isLeftSide = CartController.IsLeftSlot(pushSlotIndex);
+            float offsetX = isLeftSide ? -1.5f : 1.5f;
+
+            // 上下分布: 槽位 0,2 在上，槽位 1,3 在下
+            int verticalIndex = pushSlotIndex % 2;
+            float offsetY = (verticalIndex == 0) ? 0.3f : -0.3f;
 
             return cartPos + new Vector3(offsetX, offsetY, 0);
         }
