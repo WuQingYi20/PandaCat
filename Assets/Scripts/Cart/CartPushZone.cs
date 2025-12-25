@@ -19,31 +19,53 @@ namespace BearCar.Cart
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            // 玩家熊（需要服务器）
-            if (IsServer && other.TryGetComponent<BearController>(out var bear))
+            if (cart == null) return;
+
+            // 网络玩家熊（需要服务器或本地模式）
+            if (other.TryGetComponent<BearController>(out var bear))
             {
-                cart?.RegisterBear(bear);
+                if (IsServer || cart.IsLocalOnlyMode)
+                {
+                    cart.RegisterBear(bear);
+                }
             }
 
-            // AI 熊（本地检测）
-            if (other.TryGetComponent<BearAI>(out var ai))
+            // 本地玩家熊
+            if (other.TryGetComponent<LocalBearController>(out var localBear))
             {
-                cart?.RegisterAI(ai);
-            }
-        }
-
-        private void OnTriggerExit2D(Collider2D other)
-        {
-            // 玩家熊
-            if (IsServer && other.TryGetComponent<BearController>(out var bear))
-            {
-                cart?.UnregisterBear(bear);
+                cart.RegisterLocalBear(localBear);
             }
 
             // AI 熊
             if (other.TryGetComponent<BearAI>(out var ai))
             {
-                cart?.UnregisterAI(ai);
+                cart.RegisterAI(ai);
+            }
+        }
+
+        private void OnTriggerExit2D(Collider2D other)
+        {
+            if (cart == null) return;
+
+            // 网络玩家熊
+            if (other.TryGetComponent<BearController>(out var bear))
+            {
+                if (IsServer || cart.IsLocalOnlyMode)
+                {
+                    cart.UnregisterBear(bear);
+                }
+            }
+
+            // 本地玩家熊
+            if (other.TryGetComponent<LocalBearController>(out var localBear))
+            {
+                cart.UnregisterLocalBear(localBear);
+            }
+
+            // AI 熊
+            if (other.TryGetComponent<BearAI>(out var ai))
+            {
+                cart.UnregisterAI(ai);
             }
         }
     }

@@ -24,6 +24,7 @@ namespace BearCar.Player
 
         private Rigidbody2D rb;
         private StaminaSystem stamina;
+        private JumpSystem jumpSystem;
         private bool isNearCart = false;
         private CartController attachedCart = null;
         private int pushSlotIndex = -1;  // 推车位置索引 (0 或 1)
@@ -31,6 +32,7 @@ namespace BearCar.Player
         // 输入状态
         private Vector2 moveInput;
         private bool interactPressed;  // E 键按下（单次触发）
+        private bool jumpPressed;      // 跳跃键
 
         // 推力方向（吸附后由 A/D 控制）
         public float PushDirection { get; private set; } = 0f;  // -1 = 左, 0 = 不推, 1 = 右
@@ -41,6 +43,13 @@ namespace BearCar.Player
         {
             rb = GetComponent<Rigidbody2D>();
             stamina = GetComponent<StaminaSystem>();
+
+            // 添加跳跃系统（如果没有）
+            jumpSystem = GetComponent<JumpSystem>();
+            if (jumpSystem == null)
+            {
+                jumpSystem = gameObject.AddComponent<JumpSystem>();
+            }
         }
 
         public override void OnNetworkSpawn()
@@ -139,6 +148,17 @@ namespace BearCar.Player
                     AttachToCart();
                 }
             }
+
+            // 处理跳跃（未吸附时）
+            if (jumpPressed)
+            {
+                jumpPressed = false;
+
+                if (!IsAttached.Value && jumpSystem != null)
+                {
+                    jumpSystem.TryJump();
+                }
+            }
         }
 
         private void AttachToCart()
@@ -205,10 +225,11 @@ namespace BearCar.Player
         }
 
         [ServerRpc]
-        public void SubmitInputServerRpc(Vector2 move, bool interact)
+        public void SubmitInputServerRpc(Vector2 move, bool interact, bool jump = false)
         {
             moveInput = move;
             interactPressed = interact;
+            jumpPressed = jump;
         }
 
         private void EnsureVisuals()
