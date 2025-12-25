@@ -11,7 +11,9 @@ namespace BearCar.UI
 
         private GUIStyle labelStyle;
         private GUIStyle boxStyle;
+        private GUIStyle buttonStyle;
         private GameObject aiInstance;
+        private LocalPlayerManager localPlayerManager;
 
         private void Awake()
         {
@@ -25,6 +27,15 @@ namespace BearCar.UI
             {
                 normal = { background = MakeTexture(2, 2, new Color(0f, 0f, 0f, 0.7f)) }
             };
+
+            buttonStyle = new GUIStyle("button")
+            {
+                fontSize = 14
+            };
+
+            // 创建本地玩家管理器
+            var managerObj = new GameObject("LocalPlayerManager");
+            localPlayerManager = managerObj.AddComponent<LocalPlayerManager>();
         }
 
         private void Update()
@@ -55,15 +66,47 @@ namespace BearCar.UI
         {
             if (!showDebugInfo) return;
 
-            GUILayout.BeginArea(new Rect(10, 10, 350, 500), boxStyle);
+            GUILayout.BeginArea(new Rect(10, 10, 350, 600), boxStyle);
             GUILayout.Space(10);
 
             GUILayout.Label("=== Bear Car Debug ===", labelStyle);
             GUILayout.Space(5);
 
+            // 本地多人模式按钮
+            if (localPlayerManager != null)
+            {
+                if (!localPlayerManager.IsLocalMultiplayerActive)
+                {
+                    if (GUILayout.Button("Start Local 2P", buttonStyle))
+                    {
+                        StartLocalMultiplayer();
+                    }
+                }
+                else
+                {
+                    GUILayout.Label($"=== Local Mode ({localPlayerManager.LocalPlayerCount}P) ===", labelStyle);
+                    if (localPlayerManager.LocalPlayerCount < 2)
+                    {
+                        GUILayout.Label("Player 2: Press Enter to join!", labelStyle);
+                    }
+
+                    if (GUILayout.Button("Stop Local Mode", buttonStyle))
+                    {
+                        StopLocalMultiplayer();
+                    }
+                }
+                GUILayout.Space(5);
+            }
+
             // Network Status
             var nm = NetworkManager.Singleton;
-            if (nm != null)
+            bool isLocalMode = localPlayerManager != null && localPlayerManager.IsLocalMultiplayerActive;
+
+            if (isLocalMode)
+            {
+                GUILayout.Label("Network: Local Only", labelStyle);
+            }
+            else if (nm != null)
             {
                 string networkStatus = nm.IsHost ? "Host" :
                                        nm.IsClient ? "Client" :
@@ -88,8 +131,11 @@ namespace BearCar.UI
             if (cart != null)
             {
                 GUILayout.Label("=== Cart ===", labelStyle);
-                GUILayout.Label($"State: {cart.State.Value}", labelStyle);
-                GUILayout.Label($"Active Pushers: {cart.ActivePushers.Value}", labelStyle);
+                if (!isLocalMode)
+                {
+                    GUILayout.Label($"State: {cart.State.Value}", labelStyle);
+                    GUILayout.Label($"Active Pushers: {cart.ActivePushers.Value}", labelStyle);
+                }
                 GUILayout.Label($"Position: {cart.transform.position:F2}", labelStyle);
 
                 var rb = cart.GetComponent<Rigidbody2D>();
@@ -101,11 +147,11 @@ namespace BearCar.UI
 
             GUILayout.Space(10);
 
-            // Bears Info
+            // Network Bears Info
             var bears = FindObjectsByType<BearController>(FindObjectsSortMode.None);
             if (bears.Length > 0)
             {
-                GUILayout.Label("=== Bears ===", labelStyle);
+                GUILayout.Label("=== Network Bears ===", labelStyle);
                 foreach (var bear in bears)
                 {
                     var stamina = bear.GetComponent<StaminaSystem>();
@@ -118,12 +164,42 @@ namespace BearCar.UI
                 }
             }
 
+            // Local Bears Info
+            var localBears = FindObjectsByType<LocalBearController>(FindObjectsSortMode.None);
+            if (localBears.Length > 0)
+            {
+                GUILayout.Label("=== Local Bears ===", labelStyle);
+                foreach (var bear in localBears)
+                {
+                    string color = bear.PlayerIndex == 0 ? "(Blue)" : "(Orange)";
+                    GUILayout.Label($"Player {bear.PlayerIndex + 1} {color}:", labelStyle);
+                    GUILayout.Label($"  Attached: {bear.IsAttached}", labelStyle);
+                    GUILayout.Label($"  Pushing: {bear.IsPushing}", labelStyle);
+
+                    // 显示体力
+                    if (bear.Stamina != null)
+                    {
+                        string exhaustedStr = bear.Stamina.IsExhaustedValue ? " [EXHAUSTED]" : "";
+                        GUILayout.Label($"  Stamina: {bear.Stamina.CurrentStaminaValue:F1}{exhaustedStr}", labelStyle);
+                    }
+                }
+            }
+
             GUILayout.Space(10);
 
             // Controls Help
             GUILayout.Label("=== Controls ===", labelStyle);
-            GUILayout.Label("A/D: Move (free) / Push (attached)", labelStyle);
-            GUILayout.Label("E: Attach/Detach Cart", labelStyle);
+            if (isLocalMode)
+            {
+                GUILayout.Label("P1: WASD + E + Space", labelStyle);
+                GUILayout.Label("P2: Arrows + Enter + RShift", labelStyle);
+            }
+            else
+            {
+                GUILayout.Label("WASD/Arrows: Move", labelStyle);
+                GUILayout.Label("E: Attach/Detach Cart", labelStyle);
+                GUILayout.Label("Space: Jump", labelStyle);
+            }
             GUILayout.Label("T: Toggle AI Helper", labelStyle);
 
             // AI 状态
@@ -139,6 +215,31 @@ namespace BearCar.UI
             }
 
             GUILayout.EndArea();
+        }
+
+        private void StartLocalMultiplayer()
+        {
+            // 清理已有的网络玩家（避免重复）
+            var existingBears = FindObjectsByType<BearController>(FindObjectsSortMode.None);
+            foreach (var bear in existingBears)
+            {
+                Destroy(bear.gameObject);
+            }
+
+            // 初始化车辆为本地模式
+            var cart = FindFirstObjectByType<CartController>();
+            if (cart != null)
+            {
+                cart.InitializeLocalMode();
+            }
+
+            // 启动本地多人
+            localPlayerManager.StartLocalMultiplayer();
+        }
+
+        private void StopLocalMultiplayer()
+        {
+            localPlayerManager.StopLocalMultiplayer();
         }
 
         private Texture2D MakeTexture(int width, int height, Color color)

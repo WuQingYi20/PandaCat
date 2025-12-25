@@ -52,6 +52,13 @@ namespace BearCar.Cart
         // 推车位置管理（最多2个位置）
         private BearController[] pushSlots = new BearController[2];
 
+        // 本地玩家推车位置（本地多人模式）
+        private LocalBearController[] localPushSlots = new LocalBearController[2];
+        private HashSet<LocalBearController> registeredLocalBears = new HashSet<LocalBearController>();
+
+        // 是否为纯本地模式（无网络）
+        public bool IsLocalOnlyMode { get; set; } = false;
+
         public override void OnNetworkSpawn()
         {
             rb = GetComponent<Rigidbody2D>();
@@ -266,17 +273,29 @@ namespace BearCar.Cart
 
         private void ApplyForces()
         {
-            if (!IsServer) return;
+            // 本地模式或服务器模式都可以处理
+            if (!IsLocalOnlyMode && !IsServer) return;
 
             // 计算总推力方向（每个熊的推力方向累加）
             float totalPushInput = 0f;
             int activePushers = 0;
 
+            // 统计网络玩家
             foreach (var bear in pushSlots)
             {
                 if (bear != null && bear.IsPushing.Value && bear.HasStamina)
                 {
                     totalPushInput += bear.PushDirection;
+                    activePushers++;
+                }
+            }
+
+            // 统计本地玩家
+            foreach (var localBear in localPushSlots)
+            {
+                if (localBear != null && localBear.IsPushing && localBear.HasStamina)
+                {
+                    totalPushInput += localBear.PushDirection;
                     activePushers++;
                 }
             }
@@ -291,7 +310,15 @@ namespace BearCar.Cart
                 }
             }
 
-            ActivePushers.Value = activePushers;
+            // 更新推车人数（本地模式直接设置，网络模式用 NetworkVariable）
+            if (IsLocalOnlyMode)
+            {
+                // 本地模式下无法使用 NetworkVariable，跳过
+            }
+            else
+            {
+                ActivePushers.Value = activePushers;
+            }
 
             // 计算沿坡面的方向
             Vector2 slopeRight = new Vector2(slopeNormal.y, -slopeNormal.x);
@@ -313,6 +340,7 @@ namespace BearCar.Cart
             {
                 int attachedCount = 0;
                 foreach (var bear in pushSlots) if (bear != null) attachedCount++;
+                foreach (var localBear in localPushSlots) if (localBear != null) attachedCount++;
                 Debug.Log($"[Cart] Attached: {attachedCount}, Pushers: {activePushers}, Input: {totalPushInput:F1}, Vel: {rb.linearVelocity:F2}");
             }
         }
@@ -415,6 +443,107 @@ namespace BearCar.Cart
                 }
                 pushSlots[slotIndex] = null;
             }
+        }
+
+        // ========== 本地玩家推车位置管理 ==========
+        public void RegisterLocalBear(LocalBearController bear)
+        {
+            registeredLocalBears.Add(bear);
+            bear.SetNearCart(true, this);
+            Debug.Log($"[Cart] Local bear registered, total: {registeredLocalBears.Count}");
+        }
+
+        public void UnregisterLocalBear(LocalBearController bear)
+        {
+            registeredLocalBears.Remove(bear);
+            bear.SetNearCart(false, null);
+            Debug.Log($"[Cart] Local bear unregistered, total: {registeredLocalBears.Count}");
+        }
+
+        public int GetAvailableLocalPushSlot()
+        {
+            for (int i = 0; i < localPushSlots.Length; i++)
+            {
+                if (localPushSlots[i] == null)
+                    return i;
+            }
+            return -1;
+        }
+
+        public void OccupyLocalPushSlot(int slotIndex, LocalBearController bear)
+        {
+            if (slotIndex >= 0 && slotIndex < localPushSlots.Length)
+            {
+                localPushSlots[slotIndex] = bear;
+
+                // 吸附时忽略碰撞
+                if (bear != null && cartCollider != null)
+                {
+                    var bearCol = bear.GetComponent<Collider2D>();
+                    if (bearCol != null)
+                    {
+                        Physics2D.IgnoreCollision(cartCollider, bearCol, true);
+                        Debug.Log($"[Cart] 忽略本地熊碰撞: slot {slotIndex}");
+                    }
+                }
+            }
+        }
+
+        public void ReleaseLocalPushSlot(int slotIndex)
+        {
+            if (slotIndex >= 0 && slotIndex < localPushSlots.Length)
+            {
+                var bear = localPushSlots[slotIndex];
+                if (bear != null && cartCollider != null)
+                {
+                    var bearCol = bear.GetComponent<Collider2D>();
+                    if (bearCol != null)
+                    {
+                        Physics2D.IgnoreCollision(cartCollider, bearCol, false);
+                        Debug.Log($"[Cart] 恢复本地熊碰撞: slot {slotIndex}");
+                    }
+                }
+                localPushSlots[slotIndex] = null;
+            }
+        }
+
+        /// <summary>
+        /// 初始化本地模式（无网络时调用）
+        /// </summary>
+        public void InitializeLocalMode()
+        {
+            IsLocalOnlyMode = true;
+
+            rb = GetComponent<Rigidbody2D>();
+            cartCollider = GetComponent<Collider2D>();
+
+            if (config == null)
+            {
+                config = Resources.Load<GameConfig>("GameConfig");
+            }
+
+            rb.bodyType = RigidbodyType2D.Dynamic;
+            rb.mass = 500f;
+            rb.linearDamping = 0.5f;
+            rb.angularDamping = 5f;
+            rb.gravityScale = 1f;
+            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+            if (cartCollider != null)
+            {
+                cartCollider.isTrigger = false;
+                PhysicsMaterial2D cartMaterial = new PhysicsMaterial2D("CartMaterial")
+                {
+                    friction = 0.25f,
+                    bounciness = 0f
+                };
+                cartCollider.sharedMaterial = cartMaterial;
+            }
+
+            EnsureVisuals();
+            SetupPushZone();
+
+            Debug.Log("[Cart] 本地模式初始化完成");
         }
     }
 }
