@@ -11,6 +11,8 @@ namespace BearCar.Player
         private InputAction moveAction;
         private InputAction interactAction;
 
+        private bool lastInteractState = false;
+
         private void Awake()
         {
             controller = GetComponent<BearController>();
@@ -30,7 +32,7 @@ namespace BearCar.Player
             if (controller == null || !controller.IsOwner) return;
 
             Vector2 moveInput = Vector2.zero;
-            bool pushHeld = false;
+            bool interactPressed = false;
 
             if (moveAction != null)
             {
@@ -39,10 +41,13 @@ namespace BearCar.Player
 
             if (interactAction != null)
             {
-                pushHeld = interactAction.IsPressed();
+                bool currentInteract = interactAction.IsPressed();
+                // 检测按下瞬间（上升沿）
+                interactPressed = currentInteract && !lastInteractState;
+                lastInteractState = currentInteract;
             }
 
-            controller.SubmitInputServerRpc(moveInput, pushHeld);
+            controller.SubmitInputServerRpc(moveInput, interactPressed);
         }
     }
 }
