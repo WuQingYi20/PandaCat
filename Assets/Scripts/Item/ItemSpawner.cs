@@ -60,45 +60,69 @@ namespace BearCar.Item
 
         private void CreateRuntimeItems()
         {
-            Debug.Log("[ItemSpawner] 未找到道具配置，创建运行时测试道具");
+            Debug.Log("[ItemSpawner] 未找到道具配置，创建圣诞特别版道具 🎄");
 
             var items = new List<ItemData>();
 
-            // 加速道具
-            var speedBoost = ScriptableObject.CreateInstance<ItemData>();
-            speedBoost.itemName = "加速药水";
-            speedBoost.description = "全队加速";
-            speedBoost.itemType = ItemType.SpeedBoost;
-            speedBoost.shape = ItemShape.Diamond;
-            speedBoost.itemColor = new Color(0.2f, 0.8f, 1f);
-            speedBoost.effectValue = 1.5f;
-            speedBoost.effectDuration = 5f;
-            items.Add(speedBoost);
+            // 圣诞树饼干（绿色亲和）
+            var treeCookie = ScriptableObject.CreateInstance<ItemData>();
+            treeCookie.itemName = "圣诞树饼干";
+            treeCookie.description = "绿色的饼干，红熊吃了更开心";
+            treeCookie.itemType = ItemType.Food;
+            treeCookie.colorAffinity = ColorAffinity.Green;
+            treeCookie.shape = ItemShape.Triangle;
+            treeCookie.itemColor = new Color(0.2f, 0.7f, 0.3f);
+            treeCookie.baseEffect = 5f;
+            treeCookie.affinityBonus = 5f;
+            items.Add(treeCookie);
 
-            // 体力恢复
-            var stamina = ScriptableObject.CreateInstance<ItemData>();
-            stamina.itemName = "体力药水";
-            stamina.description = "恢复体力";
-            stamina.itemType = ItemType.StaminaRecover;
-            stamina.shape = ItemShape.Heart;
-            stamina.itemColor = new Color(0.2f, 1f, 0.4f);
-            stamina.effectValue = 3f;
-            stamina.effectDuration = 0f;
-            items.Add(stamina);
+            // 圣诞老人饼干（红色亲和）
+            var santaCookie = ScriptableObject.CreateInstance<ItemData>();
+            santaCookie.itemName = "圣诞老人饼干";
+            santaCookie.description = "红色的饼干，绿熊吃了更开心";
+            santaCookie.itemType = ItemType.Food;
+            santaCookie.colorAffinity = ColorAffinity.Red;
+            santaCookie.shape = ItemShape.Heart;
+            santaCookie.itemColor = new Color(0.9f, 0.2f, 0.2f);
+            santaCookie.baseEffect = 5f;
+            santaCookie.affinityBonus = 5f;
+            items.Add(santaCookie);
 
-            // 磁铁
-            var magnet = ScriptableObject.CreateInstance<ItemData>();
-            magnet.itemName = "磁铁";
-            magnet.description = "吸引道具";
-            magnet.itemType = ItemType.Magnet;
-            magnet.shape = ItemShape.Star;
-            magnet.itemColor = new Color(1f, 0.3f, 0.3f);
-            magnet.effectValue = 8f;
-            magnet.effectDuration = 5f;
-            items.Add(magnet);
+            // 姜饼人（中性）
+            var gingerbread = ScriptableObject.CreateInstance<ItemData>();
+            gingerbread.itemName = "姜饼人";
+            gingerbread.description = "公平的圣诞小点心";
+            gingerbread.itemType = ItemType.Food;
+            gingerbread.colorAffinity = ColorAffinity.None;
+            gingerbread.shape = ItemShape.Circle;
+            gingerbread.itemColor = new Color(0.8f, 0.5f, 0.2f);
+            gingerbread.baseEffect = 3f;
+            gingerbread.affinityBonus = 0f;
+            items.Add(gingerbread);
+
+            // 热可可（火箭推进）
+            var hotCocoa = ScriptableObject.CreateInstance<ItemData>();
+            hotCocoa.itemName = "热可可";
+            hotCocoa.description = "暖暖的力量，冲鸭！";
+            hotCocoa.itemType = ItemType.RocketBoost;
+            hotCocoa.shape = ItemShape.Square;
+            hotCocoa.itemColor = new Color(0.4f, 0.2f, 0.1f);
+            hotCocoa.effectDuration = 3f;
+            items.Add(hotCocoa);
+
+            // 圣诞礼物盒（惊喜）
+            var giftBox = ScriptableObject.CreateInstance<ItemData>();
+            giftBox.itemName = "圣诞礼物";
+            giftBox.description = "里面会是什么呢？";
+            giftBox.itemType = ItemType.Special_GiftBox;
+            giftBox.shape = ItemShape.Square;
+            giftBox.itemColor = new Color(0.9f, 0.1f, 0.2f);
+            giftBox.isBreakable = true;
+            giftBox.rarity = ItemRarity.Rare;
+            items.Add(giftBox);
 
             possibleItems = items.ToArray();
-            Debug.Log($"[ItemSpawner] 创建了 {possibleItems.Length} 个运行时道具");
+            Debug.Log($"[ItemSpawner] 创建了 {possibleItems.Length} 个圣诞道具 🎅");
         }
 
         private void Update()
@@ -117,10 +141,27 @@ namespace BearCar.Item
 
         private void SpawnRandomItem()
         {
-            if (possibleItems == null || possibleItems.Length == 0) return;
+            if (possibleItems == null || possibleItems.Length == 0)
+            {
+                Debug.LogWarning("[ItemSpawner] 没有可用的道具配置");
+                return;
+            }
+
+            // 过滤掉 null 的道具
+            var validItems = new List<ItemData>();
+            foreach (var item in possibleItems)
+            {
+                if (item != null) validItems.Add(item);
+            }
+
+            if (validItems.Count == 0)
+            {
+                Debug.LogWarning("[ItemSpawner] 所有道具配置都是空的");
+                return;
+            }
 
             // 随机选择道具
-            ItemData itemData = possibleItems[Random.Range(0, possibleItems.Length)];
+            ItemData itemData = validItems[Random.Range(0, validItems.Count)];
 
             // 随机位置
             Vector2 offset = Random.insideUnitCircle * spawnRadius;
