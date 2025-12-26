@@ -7,6 +7,7 @@ namespace BearCar.UI
     /// <summary>
     /// 游戏UI - 显示玩家状态和操作提示
     /// </summary>
+    [DefaultExecutionOrder(-200)] // 在 LocalPlayerManager 之前执行
     public class DebugUI : MonoBehaviour
     {
         [Header("UI Settings")]

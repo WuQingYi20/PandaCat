@@ -6,21 +6,28 @@ namespace BearCar.Player
     /// <summary>
     /// 熊的帧动画控制器
     /// 根据状态切换 Idle / Walk / Push 动画
+    ///
+    /// 配置方式（二选一）:
+    /// 1. 使用 BearAnimationConfig (推荐) - 在 Inspector 中拖入配置文件
+    /// 2. 自动从 Resources/Animation 文件夹加载
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
     public class BearAnimator : MonoBehaviour
     {
-        [Header("Animation Settings")]
-        [SerializeField] private float frameRate = 8f;
+        [Header("=== 动画配置 (推荐) ===")]
+        [Tooltip("拖入 BearAnimationConfig 配置文件\n创建方法: 右键 -> Create -> BearCar -> Bear Animation Config")]
+        [SerializeField] private BearAnimationConfig animationConfig;
 
-        [Header("Sprite Sheets")]
+        [Header("=== 手动配置 (可选) ===")]
+        [Tooltip("如果不使用 Config，可以直接在这里拖入动画帧")]
+        [SerializeField] private float frameRate = 8f;
         [SerializeField] private Sprite[] idleFrames;
         [SerializeField] private Sprite[] walkFrames;
         [SerializeField] private Sprite[] pushFrames;
 
-        [Header("Player Tint")]
-        [SerializeField] private Color player1Tint = new Color(0.8f, 0.9f, 1f);    // 偏蓝
-        [SerializeField] private Color player2Tint = new Color(1f, 0.85f, 0.7f);   // 偏橙
+        [Header("=== 颜色设置 ===")]
+        [SerializeField] private Color player1Tint = new Color(0.8f, 0.9f, 1f);
+        [SerializeField] private Color player2Tint = new Color(1f, 0.85f, 0.7f);
 
         private SpriteRenderer spriteRenderer;
         private LocalBearController bearController;
@@ -41,17 +48,37 @@ namespace BearCar.Player
 
         private void Start()
         {
-            // 加载动画帧（如果没有在 Inspector 中设置）
-            if (idleFrames == null || idleFrames.Length == 0)
+            // 尝试从 Resources 加载配置（如果 Inspector 中没有设置）
+            if (animationConfig == null)
+            {
+                animationConfig = Resources.Load<BearAnimationConfig>("BearAnimationConfig");
+            }
+
+            // 如果有配置文件，使用配置文件的设置
+            if (animationConfig != null)
+            {
+                LoadFromConfig();
+            }
+            // 否则如果没有手动设置动画帧，尝试从 Resources 加载
+            else if (idleFrames == null || idleFrames.Length == 0)
             {
                 LoadAnimationFrames();
             }
 
-            // 设置玩家颜色
             ApplyPlayerTint();
-
-            // 初始动画
             SetAnimation(AnimState.Idle);
+        }
+
+        private void LoadFromConfig()
+        {
+            idleFrames = animationConfig.GetIdleFrames(playerIndex);
+            walkFrames = animationConfig.GetWalkFrames(playerIndex);
+            pushFrames = animationConfig.GetPushFrames(playerIndex);
+            frameRate = animationConfig.frameRate;
+            player1Tint = animationConfig.player1Tint;
+            player2Tint = animationConfig.player2Tint;
+
+            Debug.Log($"[BearAnimator] P{playerIndex + 1} 从配置加载动画: Idle={idleFrames?.Length ?? 0}, Walk={walkFrames?.Length ?? 0}, Push={pushFrames?.Length ?? 0}");
         }
 
         private void LoadAnimationFrames()
@@ -64,7 +91,7 @@ namespace BearCar.Player
             walkFrames = LoadPlayerSprites("Animation/Walk", playerSuffix);
             pushFrames = LoadPlayerSprites("Animation/Push", playerSuffix);
 
-            Debug.Log($"[BearAnimator] P{playerIndex + 1} 加载动画: Idle={idleFrames.Length}, Walk={walkFrames.Length}, Push={pushFrames.Length}");
+            Debug.Log($"[BearAnimator] P{playerIndex + 1} 从 Resources 加载动画: Idle={idleFrames.Length}, Walk={walkFrames.Length}, Push={pushFrames.Length}");
 
             if (idleFrames.Length == 0)
             {
@@ -77,7 +104,6 @@ namespace BearCar.Player
             var allSprites = Resources.LoadAll<Sprite>(path);
             if (allSprites.Length > 0)
             {
-                // 过滤出该玩家的动画帧，并按名称排序
                 var playerSprites = allSprites
                     .Where(s => s.name.Contains(playerSuffix))
                     .OrderBy(s => s.name)
@@ -88,7 +114,6 @@ namespace BearCar.Player
                     return playerSprites;
                 }
 
-                // 如果没有找到对应玩家的，返回所有的（兼容旧资源）
                 return allSprites.OrderBy(s => s.name).ToArray();
             }
             return allSprites;
@@ -100,7 +125,15 @@ namespace BearCar.Player
             {
                 playerIndex = bearController.PlayerIndex;
             }
-            spriteRenderer.color = playerIndex == 0 ? player1Tint : player2Tint;
+
+            if (animationConfig != null)
+            {
+                spriteRenderer.color = animationConfig.GetPlayerTint(playerIndex);
+            }
+            else
+            {
+                spriteRenderer.color = playerIndex == 0 ? player1Tint : player2Tint;
+            }
         }
 
         private void Update()
@@ -182,8 +215,15 @@ namespace BearCar.Player
         {
             playerIndex = index;
 
-            // 重新加载该玩家的动画
-            LoadAnimationFrames();
+            // 如果有配置文件，重新加载
+            if (animationConfig != null)
+            {
+                LoadFromConfig();
+            }
+            else
+            {
+                LoadAnimationFrames();
+            }
 
             // 应用颜色
             if (spriteRenderer != null)
