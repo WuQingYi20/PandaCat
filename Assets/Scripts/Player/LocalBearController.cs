@@ -34,6 +34,9 @@ namespace BearCar.Player
         private Vector2 moveInput;
         private bool interactPressed;
 
+        // 供动画系统读取
+        public Vector2 MoveInput => moveInput;
+
         public void Initialize(int playerIndex)
         {
             PlayerIndex = playerIndex;
@@ -85,26 +88,40 @@ namespace BearCar.Player
             {
                 sr = gameObject.AddComponent<SpriteRenderer>();
             }
+            sr.sortingOrder = 10;
 
+            // 添加动画控制器
+            var animator = GetComponent<BearAnimator>();
+            if (animator == null)
+            {
+                animator = gameObject.AddComponent<BearAnimator>();
+            }
+            animator.SetPlayerIndex(PlayerIndex);
+
+            // 如果没有动画帧，使用备用纯色方块
             if (sr.sprite == null)
             {
-                int size = 32;
-                Texture2D tex = new Texture2D(size, size);
-                Color[] pixels = new Color[size * size];
-                for (int i = 0; i < pixels.Length; i++)
-                {
-                    pixels[i] = Color.white;
-                }
-                tex.SetPixels(pixels);
-                tex.Apply();
-                sr.sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 32f);
+                CreateFallbackSprite(sr);
             }
+        }
 
-            // 不同玩家不同颜色
+        private void CreateFallbackSprite(SpriteRenderer sr)
+        {
+            int size = 32;
+            Texture2D tex = new Texture2D(size, size);
+            Color[] pixels = new Color[size * size];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = Color.white;
+            }
+            tex.SetPixels(pixels);
+            tex.Apply();
+            sr.sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 32f);
+
+            // 备用颜色
             sr.color = PlayerIndex == 0
-                ? new Color(0.3f, 0.5f, 1f)    // Player 1: 蓝色
-                : new Color(1f, 0.5f, 0.3f);   // Player 2: 橙色
-            sr.sortingOrder = 10;
+                ? new Color(0.3f, 0.5f, 1f)
+                : new Color(1f, 0.5f, 0.3f);
         }
 
         public void SetInput(Vector2 move, bool interact, bool jump = false)

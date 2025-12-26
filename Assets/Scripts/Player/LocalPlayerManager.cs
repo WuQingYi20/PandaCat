@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
+using BearCar.Cart;
 
 namespace BearCar.Player
 {
@@ -13,6 +15,7 @@ namespace BearCar.Player
 
         [Header("Settings")]
         [SerializeField] private int maxLocalPlayers = 2;
+        [SerializeField] private bool autoStartTwoPlayers = true;
 
         [Header("Spawn Points")]
         [SerializeField] private Vector3 player1SpawnPos = new Vector3(-6f, 1f, 0f);
@@ -20,6 +23,7 @@ namespace BearCar.Player
 
         private List<LocalBearController> localPlayers = new List<LocalBearController>();
         private bool isLocalMultiplayerActive = false;
+        private bool hasInitialized = false;
 
         public bool IsLocalMultiplayerActive => isLocalMultiplayerActive;
         public int LocalPlayerCount => localPlayers.Count;
@@ -36,22 +40,82 @@ namespace BearCar.Player
             }
         }
 
-        private void Update()
+        private void Start()
         {
-            if (!isLocalMultiplayerActive) return;
-
-            // 检测 Player 2 动态加入 (Enter 键)
-            if (localPlayers.Count < maxLocalPlayers)
+            // 自动启动本地双人模式
+            if (autoStartTwoPlayers && !hasInitialized)
             {
-                if (Input.GetKeyDown(KeyCode.Return) && !HasPlayer(1))
-                {
-                    JoinLocalPlayer(1);
-                }
+                hasInitialized = true;
+                InitializeLocalGame();
             }
         }
 
         /// <summary>
-        /// 启动本地多人模式
+        /// 初始化本地游戏（默认双人）
+        /// </summary>
+        public void InitializeLocalGame()
+        {
+            // 禁用 NetworkManager 防止自动生成网络玩家
+            DisableNetworkManager();
+
+            // 清理网络玩家
+            var existingNetBears = FindObjectsByType<BearController>(FindObjectsSortMode.None);
+            foreach (var bear in existingNetBears)
+            {
+                Destroy(bear.gameObject);
+            }
+
+            // 清理已存在的本地玩家（避免重复）
+            var existingLocalBears = FindObjectsByType<LocalBearController>(FindObjectsSortMode.None);
+            foreach (var bear in existingLocalBears)
+            {
+                Destroy(bear.gameObject);
+            }
+            localPlayers.Clear();
+
+            // 初始化车辆为本地模式
+            var cart = FindFirstObjectByType<CartController>();
+            if (cart != null)
+            {
+                cart.InitializeLocalMode();
+            }
+
+            // 启动双人
+            StartLocalMultiplayerWithBothPlayers();
+        }
+
+        private void DisableNetworkManager()
+        {
+            var nm = NetworkManager.Singleton;
+            if (nm != null)
+            {
+                if (nm.IsListening)
+                {
+                    nm.Shutdown();
+                }
+                nm.enabled = false;
+                Debug.Log("[LocalPlayerManager] NetworkManager 已禁用");
+            }
+        }
+
+        /// <summary>
+        /// 启动本地多人模式（同时生成两个玩家）
+        /// </summary>
+        public void StartLocalMultiplayerWithBothPlayers()
+        {
+            if (isLocalMultiplayerActive) return;
+
+            isLocalMultiplayerActive = true;
+
+            // 生成两个玩家
+            JoinLocalPlayer(0);
+            JoinLocalPlayer(1);
+
+            Debug.Log("[LocalPlayerManager] 本地双人模式已启动");
+        }
+
+        /// <summary>
+        /// 启动本地多人模式（单人，等待第二人加入）
         /// </summary>
         public void StartLocalMultiplayer()
         {

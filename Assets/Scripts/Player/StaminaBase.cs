@@ -16,6 +16,7 @@ namespace BearCar.Player
 
         public abstract float CurrentStaminaValue { get; }
         public abstract bool IsExhaustedValue { get; }
+        public float MaxStamina => config != null ? config.maxStamina : 5f;
         public bool HasStamina => CurrentStaminaValue > 0f && !IsExhaustedValue;
 
         protected virtual void LoadConfig()
