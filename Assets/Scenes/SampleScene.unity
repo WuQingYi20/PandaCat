@@ -1559,6 +1559,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5360812271307785351, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
+      propertyPath: m_Size.x
+      value: 1.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 5360812271307785351, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
+      propertyPath: m_Size.y
+      value: 0.72
+      objectReference: {fileID: 0}
+    - target: {fileID: 5360812271307785351, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 8393649927468083019, guid: d4870ccda3eab4a8ead0e80fe801b7ea, type: 3}
+    - target: {fileID: 5360812271307785351, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
+      propertyPath: m_WasSpriteAssigned
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6499571860277684640, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
       propertyPath: m_Name
       value: Cart
