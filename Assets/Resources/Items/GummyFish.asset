@@ -15,7 +15,7 @@ MonoBehaviour:
   itemName: "\u8F6F\u7CD6\u9C7C"
   description: "Q\u5F39\u7684\u8F6F\u7CD6\u9C7C"
   rarity: 1
-  icon: {fileID: 0}
+  icon: {fileID: -3435211061259879703, guid: 8cb00a42b3f5c4792b0ca604aa5c6408, type: 3}
   itemColor: {r: 1, g: 0.6, b: 0.8, a: 1}
   shape: 2
   itemType: 0
