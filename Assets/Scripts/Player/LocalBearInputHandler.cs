@@ -1,11 +1,12 @@
 using UnityEngine;
+using BearCar.Item;
 
 namespace BearCar.Player
 {
     /// <summary>
     /// 本地玩家输入处理器
-    /// Player 1: WASD + E
-    /// Player 2: 方向键 + Enter
+    /// Player 1: WASD + E + Space + Q/Tab
+    /// Player 2: 方向键 + Enter + RShift + ,/.
     /// </summary>
     [RequireComponent(typeof(LocalBearController))]
     public class LocalBearInputHandler : MonoBehaviour
@@ -20,14 +21,20 @@ namespace BearCar.Player
         private static readonly KeyCode P1_Right = KeyCode.D;
         private static readonly KeyCode P1_Interact = KeyCode.E;
         private static readonly KeyCode P1_Jump = KeyCode.Space;
+        private static readonly KeyCode P1_ItemPrev = KeyCode.Q;        // 上一个道具
+        private static readonly KeyCode P1_ItemNext = KeyCode.R;        // 下一个道具（改用R，避免和E冲突）
+        private static readonly KeyCode P1_ItemUse = KeyCode.Tab;       // 使用道具
 
         // Player 2 按键
         private static readonly KeyCode P2_Up = KeyCode.UpArrow;
         private static readonly KeyCode P2_Down = KeyCode.DownArrow;
         private static readonly KeyCode P2_Left = KeyCode.LeftArrow;
         private static readonly KeyCode P2_Right = KeyCode.RightArrow;
-        private static readonly KeyCode P2_Interact = KeyCode.Return; // Enter
+        private static readonly KeyCode P2_Interact = KeyCode.Return;   // Enter
         private static readonly KeyCode P2_Jump = KeyCode.RightShift;
+        private static readonly KeyCode P2_ItemPrev = KeyCode.Comma;    // , 上一个道具
+        private static readonly KeyCode P2_ItemNext = KeyCode.Period;   // . 下一个道具
+        private static readonly KeyCode P2_ItemUse = KeyCode.Slash;     // / 使用道具
 
         public void Initialize(int index)
         {
@@ -44,6 +51,56 @@ namespace BearCar.Player
             bool jumpPressed = GetJumpPressed();
 
             controller.SetInput(moveInput, interactPressed, jumpPressed);
+
+            // 道具操作（共享背包）
+            HandleItemInput();
+        }
+
+        private void HandleItemInput()
+        {
+            var inventory = SharedInventory.Instance;
+            if (inventory == null) return;
+
+            if (playerIndex == 0)
+            {
+                // Player 1 道具操作
+                if (Input.GetKeyDown(P1_ItemPrev))
+                {
+                    inventory.RotatePrev();
+                }
+                if (Input.GetKeyDown(P1_ItemNext))
+                {
+                    inventory.RotateNext();
+                }
+                if (Input.GetKeyDown(P1_ItemUse))
+                {
+                    var item = inventory.UseCurrentItem(playerIndex);
+                    if (item != null)
+                    {
+                        controller.OnItemUsed(item);
+                    }
+                }
+            }
+            else
+            {
+                // Player 2 道具操作
+                if (Input.GetKeyDown(P2_ItemPrev))
+                {
+                    inventory.RotatePrev();
+                }
+                if (Input.GetKeyDown(P2_ItemNext))
+                {
+                    inventory.RotateNext();
+                }
+                if (Input.GetKeyDown(P2_ItemUse))
+                {
+                    var item = inventory.UseCurrentItem(playerIndex);
+                    if (item != null)
+                    {
+                        controller.OnItemUsed(item);
+                    }
+                }
+            }
         }
 
         private Vector2 GetMoveInput()

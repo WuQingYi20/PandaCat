@@ -1,6 +1,7 @@
 using UnityEngine;
 using BearCar.Core;
 using BearCar.Cart;
+using BearCar.Item;
 
 namespace BearCar.Player
 {
@@ -118,10 +119,10 @@ namespace BearCar.Player
             tex.Apply();
             sr.sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 32f);
 
-            // 备用颜色
+            // 备用颜色：绿熊 (P1) 和 红熊 (P2)
             sr.color = PlayerIndex == 0
-                ? new Color(0.3f, 0.5f, 1f)
-                : new Color(1f, 0.5f, 0.3f);
+                ? new Color(0.3f, 0.8f, 0.4f)  // 绿熊
+                : new Color(0.9f, 0.3f, 0.3f); // 红熊
         }
 
         public void SetInput(Vector2 move, bool interact, bool jump = false)
@@ -256,6 +257,83 @@ namespace BearCar.Player
             {
                 DetachFromCart();
             }
+        }
+
+        /// <summary>
+        /// 当玩家使用道具时调用
+        /// </summary>
+        public void OnItemUsed(ItemData item)
+        {
+            if (item == null) return;
+
+            // 记录到日志系统
+            var log = FindFirstObjectByType<ItemEffectLog>();
+            if (log != null)
+            {
+                log.AddLog(PlayerIndex, item);
+            }
+
+            // 计算颜色亲和效果
+            float effectValue = item.GetEffectForPlayer(PlayerIndex);
+
+            // 根据道具类型应用效果
+            switch (item.itemType)
+            {
+                case ItemType.Food:
+                case ItemType.StaminaRecover:
+                    if (staminaSystem != null)
+                    {
+                        staminaSystem.Recover(effectValue);
+                    }
+                    break;
+
+                case ItemType.Poison:
+                    if (staminaSystem != null)
+                    {
+                        staminaSystem.Recover(-Mathf.Abs(item.effectValue)); // 负值扣血
+                    }
+                    break;
+
+                case ItemType.SpeedBoost:
+                    StartCoroutine(SpeedBoostEffect(item.effectValue, item.effectDuration));
+                    break;
+
+                case ItemType.RocketBoost:
+                    StartCoroutine(RocketBoostEffect(item.effectDuration));
+                    break;
+
+                // 其他效果由 ItemEffectHandler 全局处理
+            }
+
+            Debug.Log($"[LocalBear] P{PlayerIndex} 使用了 {item.itemName}，效果值: {effectValue}");
+        }
+
+        private System.Collections.IEnumerator RocketBoostEffect(float duration)
+        {
+            // 火箭推进效果
+            float originalGravity = rb.gravityScale;
+            rb.gravityScale = 0;
+
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                // 向前冲刺
+                rb.linearVelocity = new Vector2(10f, rb.linearVelocity.y);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            rb.gravityScale = originalGravity;
+        }
+
+        private System.Collections.IEnumerator SpeedBoostEffect(float multiplier, float duration)
+        {
+            // 简单的速度加成效果
+            float originalSpeed = config != null ? config.playerMoveSpeed : 5f;
+            // 这里可以添加视觉效果
+
+            yield return new WaitForSeconds(duration);
+            // 效果结束
         }
     }
 }

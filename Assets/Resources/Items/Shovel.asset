@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0bdb143c8dfac54b83c60ba684316df, type: 3}
+  m_Name: Shovel
+  m_EditorClassIdentifier: Assembly-CSharp::BearCar.Item.ItemData
+  itemName: "\u94F2\u5B50"
+  description: "\u53EF\u4EE5\u51FB\u788E\u77F3\u5934\u548C\u5F69\u86CB"
+  rarity: 1
+  icon: {fileID: 0}
+  itemColor: {r: 0.7, g: 0.5, b: 0.3, a: 1}
+  shape: 6
+  itemType: 12
+  targetType: 2
+  colorAffinity: 0
+  baseEffect: 5
+  affinityBonus: 5
+  effectValue: 1
+  effectDuration: 0
+  isPlaceable: 0
+  isBreakable: 0
+  breakRewards: []
+  isComboTrigger: 0
+  comboPartner: {fileID: 0}
+  comboResultType: 2
+  stackable: 0
+  maxStack: 1
+  pickupSound: {fileID: 0}
+  useSound: {fileID: 0}
