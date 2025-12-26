@@ -14,22 +14,46 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BearCar.Player.BearAnimationConfig
   player1Idle:
   - {fileID: -1517836690030354136, guid: f6bd5547c582c564b811ba990fcec708, type: 3}
-  - {fileID: 3859400548071770548, guid: f6bd5547c582c564b811ba990fcec708, type: 3}
-  player1Walk:
-  - {fileID: -983112389577959887, guid: 0d181c6121aa44946b972daf51b72974, type: 3}
-  - {fileID: 3811413366633258719, guid: 4fcf4cb39e4bd17418c8d6a1fc24716d, type: 3}
-  player1Push:
-  - {fileID: 1139520349666336131, guid: 17c10a6a4bed0be4ca5ff05e4356d858, type: 3}
-  - {fileID: -6628749028707803357, guid: 03934111e56324044899afb6ea2156d4, type: 3}
-  player2Idle:
   - {fileID: 8660189369736047070, guid: 3b258fc086d9fb243a443383451f34eb, type: 3}
-  - {fileID: 8756653625930212487, guid: 3b258fc086d9fb243a443383451f34eb, type: 3}
-  player2Walk:
-  - {fileID: -6588807733726229465, guid: 7f04136c0d9213648a9bc30ea69b6319, type: 3}
+  - {fileID: -5017413795189057962, guid: 19863d260c756dd4995f3f8955695260, type: 3}
+  - {fileID: 6835824158280618450, guid: 4c3524089b6a9274789a30ad85be21ea, type: 3}
+  - {fileID: -3998610328055166650, guid: aeea29562c0f25c4f99a0faf7d881d60, type: 3}
+  - {fileID: -7456550192691995148, guid: ea44fc2c4a34c1c4f918e5c769fd76ed, type: 3}
+  player1Walk:
+  - {fileID: 3811413366633258719, guid: 4fcf4cb39e4bd17418c8d6a1fc24716d, type: 3}
   - {fileID: -619961516794060218, guid: 5fb21852b91b9c1428b1e6bc567a9921, type: 3}
-  player2Push:
-  - {fileID: -4602054194333392644, guid: 43af22b84e1dbdf42939d300be01671b, type: 3}
+  - {fileID: -804028467286908319, guid: a1eb1b7ad44e3b5468a40c75fbaa8b93, type: 3}
+  - {fileID: -6556138106074088527, guid: d3d872443280faf4c960302f8c6fdafe, type: 3}
+  - {fileID: 6722843508508181666, guid: 781dbd1dd04935945acb2bea6782ee5a, type: 3}
+  - {fileID: 5826651879084840794, guid: 42ce93c560f62ea42b1af230f9cded43, type: 3}
+  player1Push:
+  - {fileID: -6628749028707803357, guid: 03934111e56324044899afb6ea2156d4, type: 3}
   - {fileID: -9028531660307840992, guid: e62582318f854eb46b015fd693e0aadc, type: 3}
-  frameRate: 8
+  - {fileID: 2143345142671672408, guid: 2cf5b23792fd9944ebc6f20d66431921, type: 3}
+  - {fileID: 7085903603917300274, guid: 318c8a233a77a174b9fbf73502c2bf73, type: 3}
+  - {fileID: 5150541314837291414, guid: 075c6853f31c865498421262817f7dea, type: 3}
+  - {fileID: -958702779243870039, guid: 385bc1ef7825c2c4e9b7611cec67ee44, type: 3}
+  player2Idle:
+  - {fileID: 3859400548071770548, guid: f6bd5547c582c564b811ba990fcec708, type: 3}
+  - {fileID: 8756653625930212487, guid: 3b258fc086d9fb243a443383451f34eb, type: 3}
+  - {fileID: 836710496693650011, guid: 19863d260c756dd4995f3f8955695260, type: 3}
+  - {fileID: -5953854101847007904, guid: 4c3524089b6a9274789a30ad85be21ea, type: 3}
+  - {fileID: 1242801223046292268, guid: aeea29562c0f25c4f99a0faf7d881d60, type: 3}
+  - {fileID: -2156658568119782030, guid: ea44fc2c4a34c1c4f918e5c769fd76ed, type: 3}
+  player2Walk:
+  - {fileID: -983112389577959887, guid: 0d181c6121aa44946b972daf51b72974, type: 3}
+  - {fileID: -6588807733726229465, guid: 7f04136c0d9213648a9bc30ea69b6319, type: 3}
+  - {fileID: 9201033660469323267, guid: 14c49acb48cb198409e8ca22251f0f44, type: 3}
+  - {fileID: 1778277362767098353, guid: 570177211e7b0ed4fa50550b3165f493, type: 3}
+  - {fileID: 6917741935074752248, guid: ff78aae06e16bf4459a77453a91e1c26, type: 3}
+  - {fileID: -1196174915588648749, guid: 20e8cba7112d7fc4c82a0beec77d194a, type: 3}
+  player2Push:
+  - {fileID: 1139520349666336131, guid: 17c10a6a4bed0be4ca5ff05e4356d858, type: 3}
+  - {fileID: -4602054194333392644, guid: 43af22b84e1dbdf42939d300be01671b, type: 3}
+  - {fileID: -848045735975015658, guid: 36a7ad1a2d76d2b4fa7d3fd1df5009f0, type: 3}
+  - {fileID: 1772699135506319738, guid: 379adf7f620c3ac4bb102f0d6b4af936, type: 3}
+  - {fileID: -3324640146025019715, guid: ee3afe36e4e90534b938aa274a839f4b, type: 3}
+  - {fileID: 795328793013825688, guid: 8482a2f691ae13645ae83907269d0c81, type: 3}
+  frameRate: 6
   player1Tint: {r: 1, g: 1, b: 1, a: 1}
   player2Tint: {r: 1, g: 1, b: 1, a: 1}
