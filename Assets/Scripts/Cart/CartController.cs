@@ -169,7 +169,8 @@ namespace BearCar.Cart
             // 保存碰撞前的速度
             velocityBeforeCollision = rb.linearVelocity;
 
-            if (!IsServer) return;
+            // 本地模式或服务器模式都可以处理
+            if (!IsLocalOnlyMode && !IsServer) return;
 
             DetectSlope();
             ApplyForces();
@@ -362,8 +363,15 @@ namespace BearCar.Cart
             }
         }
 
+        // 本地模式用的状态变量
+        private int localActivePushers = 0;
+        private CartState localState = CartState.Idle;
+
         private void UpdateState()
         {
+            // 本地模式下跳过 NetworkVariable 操作
+            if (IsLocalOnlyMode) return;
+
             float velocityX = rb.linearVelocity.x;
             bool onSlope = currentSlopeAngle > 5f;
 

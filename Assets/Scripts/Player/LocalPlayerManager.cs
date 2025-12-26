@@ -9,6 +9,7 @@ namespace BearCar.Player
     /// 本地多人管理器
     /// 管理本地玩家的加入和退出
     /// </summary>
+    [DefaultExecutionOrder(-100)] // 确保在其他脚本之前执行
     public class LocalPlayerManager : MonoBehaviour
     {
         public static LocalPlayerManager Instance { get; private set; }
@@ -33,6 +34,12 @@ namespace BearCar.Player
             if (Instance == null)
             {
                 Instance = this;
+
+                // 立即禁用 NetworkManager，防止它自动生成玩家
+                if (autoStartTwoPlayers)
+                {
+                    DisableNetworkManager();
+                }
             }
             else
             {
@@ -58,18 +65,14 @@ namespace BearCar.Player
             // 禁用 NetworkManager 防止自动生成网络玩家
             DisableNetworkManager();
 
-            // 清理网络玩家
-            var existingNetBears = FindObjectsByType<BearController>(FindObjectsSortMode.None);
-            foreach (var bear in existingNetBears)
-            {
-                Destroy(bear.gameObject);
-            }
+            // 清理网络玩家（使用 DestroyImmediate 立即删除）
+            CleanupNetworkBears();
 
             // 清理已存在的本地玩家（避免重复）
             var existingLocalBears = FindObjectsByType<LocalBearController>(FindObjectsSortMode.None);
             foreach (var bear in existingLocalBears)
             {
-                Destroy(bear.gameObject);
+                DestroyImmediate(bear.gameObject);
             }
             localPlayers.Clear();
 
@@ -82,20 +85,83 @@ namespace BearCar.Player
 
             // 启动双人
             StartLocalMultiplayerWithBothPlayers();
+
+            // 启动延迟清理协程，捕获任何延迟生成的网络玩家
+            StartCoroutine(DelayedCleanup());
+        }
+
+        private void CleanupNetworkBears()
+        {
+            var existingNetBears = FindObjectsByType<BearController>(FindObjectsSortMode.None);
+            foreach (var bear in existingNetBears)
+            {
+                DestroyImmediate(bear.gameObject);
+                Debug.Log("[LocalPlayerManager] 立即清理了一个网络 Bear");
+            }
+        }
+
+        private void HideConnectionPanel()
+        {
+            // 方法1: 销毁 NetworkUIManager 组件（防止它调用 ShowConnectionPanel）
+            var nui = FindFirstObjectByType<BearCar.Network.NetworkUIManager>();
+            if (nui != null)
+            {
+                DestroyImmediate(nui);
+                Debug.Log("[LocalPlayerManager] NetworkUIManager 组件已销毁");
+            }
+
+            // 方法2: 查找并隐藏所有名为 ConnectionPanel 的对象
+            var allObjects = FindObjectsByType<Transform>(FindObjectsSortMode.None);
+            foreach (var t in allObjects)
+            {
+                if (t.name == "ConnectionPanel" || t.name == "InGamePanel")
+                {
+                    t.gameObject.SetActive(false);
+                    Debug.Log($"[LocalPlayerManager] {t.name} 已隐藏");
+                }
+            }
+        }
+
+        private System.Collections.IEnumerator DelayedCleanup()
+        {
+            // 等待几帧后再次清理，确保没有遗漏
+            yield return null;
+            yield return null;
+            yield return null;
+
+            // 再次隐藏连接面板（因为 NetworkUIManager.Start() 可能会显示它）
+            HideConnectionPanel();
+
+            var strayBears = FindObjectsByType<BearController>(FindObjectsSortMode.None);
+            foreach (var bear in strayBears)
+            {
+                Destroy(bear.gameObject);
+                Debug.Log("[LocalPlayerManager] 延迟清理了一个网络 Bear");
+            }
         }
 
         private void DisableNetworkManager()
         {
+            // 完全销毁 NetworkManager 及其 GameObject
             var nm = NetworkManager.Singleton;
             if (nm != null)
             {
+                // 先 Shutdown 再销毁
                 if (nm.IsListening)
                 {
                     nm.Shutdown();
                 }
-                nm.enabled = false;
-                Debug.Log("[LocalPlayerManager] NetworkManager 已禁用");
+
+                // 立即销毁整个 NetworkManager GameObject（包含 NetworkGameManager）
+                DestroyImmediate(nm.gameObject);
+                Debug.Log("[LocalPlayerManager] NetworkManager GameObject 已立即销毁");
             }
+
+            // 隐藏网络连接面板
+            HideConnectionPanel();
+
+            // 清理可能已经生成的网络玩家 Bear
+            CleanupNetworkBears();
         }
 
         /// <summary>
