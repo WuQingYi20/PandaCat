@@ -14,20 +14,24 @@ namespace BearCar.Item
         public LogPosition position = LogPosition.TopRight;
 
         [Tooltip("距离边缘的偏移")]
-        public Vector2 offset = new Vector2(20, 80);
+        public Vector2 offset = new Vector2(15, 15);
 
         [Tooltip("最大显示条数")]
-        public int maxEntries = 5;
+        public int maxEntries = 4;
 
         [Tooltip("日志消失时间（秒）")]
-        public float fadeTime = 4f;
+        public float fadeTime = 3f;
 
         [Header("=== 外观设置 ===")]
         [Tooltip("日志宽度")]
-        public float logWidth = 280f;
+        public float logWidth = 240f;
 
         [Tooltip("每条日志高度")]
-        public float entryHeight = 50f;
+        public float entryHeight = 45f;
+
+        [Header("=== 玩家颜色 ===")]
+        public Color greenBearColor = new Color(0.3f, 0.9f, 0.4f);
+        public Color redBearColor = new Color(0.95f, 0.3f, 0.3f);
 
         [Tooltip("背景颜色")]
         public Color backgroundColor = new Color(0, 0, 0, 0.7f);
@@ -259,21 +263,35 @@ namespace BearCar.Item
             // 背景
             GUI.Box(rect, "", bgStyle);
 
-            // 道具颜色条
-            Texture2D colorBar = MakeTexture(1, 1, entry.itemColor);
+            // 根据玩家名称确定颜色条颜色
+            Color playerColor;
+            if (entry.playerName.Contains("绿熊"))
+            {
+                playerColor = greenBearColor;
+            }
+            else if (entry.playerName.Contains("红熊"))
+            {
+                playerColor = redBearColor;
+            }
+            else
+            {
+                playerColor = entry.itemColor;
+            }
+
+            // 左侧玩家颜色条
+            Texture2D colorBar = MakeTexture(1, 1, playerColor);
             GUI.DrawTexture(new Rect(rect.x, rect.y, 4, rect.height), colorBar);
 
             // 标题行：玩家名 + 动作 + 道具名
-            Rect titleRect = new Rect(rect.x + 12, rect.y + 5, rect.width - 20, 20);
-            string action = entry.isPickup ? "拾取了" : "使用了";
-            Color tColor = entry.isPickup ? new Color(0.6f, 1f, 0.6f) : titleColor; // 拾取用绿色
-            titleStyle.normal.textColor = new Color(tColor.r, tColor.g, tColor.b, entry.alpha);
-            GUI.Label(titleRect, $"{entry.playerName} {action} 【{entry.itemName}】", titleStyle);
+            Rect titleRect = new Rect(rect.x + 10, rect.y + 4, rect.width - 16, 18);
+            string action = entry.isPickup ? "拾取" : "使用";
+            titleStyle.normal.textColor = new Color(playerColor.r, playerColor.g, playerColor.b, entry.alpha);
+            GUI.Label(titleRect, $"{entry.playerName} {action} {entry.itemName}", titleStyle);
 
             // 效果描述
-            Rect effectRect = new Rect(rect.x + 12, rect.y + 26, rect.width - 20, 20);
+            Rect effectRect = new Rect(rect.x + 10, rect.y + 24, rect.width - 16, 18);
             effectStyle.normal.textColor = new Color(effectColor.r, effectColor.g, effectColor.b, entry.alpha);
-            GUI.Label(effectRect, $"→ {entry.effectText}", effectStyle);
+            GUI.Label(effectRect, entry.effectText, effectStyle);
 
             GUI.color = oldColor;
         }

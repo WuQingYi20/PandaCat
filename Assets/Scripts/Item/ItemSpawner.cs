@@ -171,9 +171,28 @@ namespace BearCar.Item
             GameObject pickupObj = new GameObject($"Pickup_{itemData.itemName}");
             pickupObj.transform.position = spawnPos;
 
+            // 先添加必要组件，避免 RequireComponent 问题
+            var sr = pickupObj.AddComponent<SpriteRenderer>();
+            var col = pickupObj.AddComponent<CircleCollider2D>();
+            col.radius = 0.5f;
+            col.isTrigger = true;
+
             var pickup = pickupObj.AddComponent<ItemPickup>();
+            if (pickup == null)
+            {
+                Debug.LogError("[ItemSpawner] 无法创建 ItemPickup 组件");
+                Destroy(pickupObj);
+                return;
+            }
+
             pickup.itemData = itemData;
             pickup.respawnTime = 0f; // 不重生，由生成器控制
+
+            // 设置视觉效果
+            sr.sprite = CreateItemSprite(itemData.shape);
+            sr.color = itemData.itemColor;
+            sr.sortingOrder = 10;
+            pickupObj.transform.localScale = Vector3.one * 0.8f;
 
             spawnedItems.Add(pickup);
 
@@ -186,6 +205,67 @@ namespace BearCar.Item
         public void ForceSpawn()
         {
             SpawnRandomItem();
+        }
+
+        private Sprite CreateItemSprite(ItemShape shape)
+        {
+            int size = 32;
+            Texture2D tex = new Texture2D(size, size);
+            Color[] pixels = new Color[size * size];
+
+            float center = size / 2f;
+            float radius = size / 2f - 2;
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x - center;
+                    float dy = y - center;
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    float angle = Mathf.Atan2(dy, dx);
+
+                    bool filled = false;
+
+                    switch (shape)
+                    {
+                        case ItemShape.Circle:
+                            filled = dist < radius;
+                            break;
+                        case ItemShape.Square:
+                            filled = Mathf.Abs(dx) < radius * 0.7f && Mathf.Abs(dy) < radius * 0.7f;
+                            break;
+                        case ItemShape.Diamond:
+                            filled = Mathf.Abs(dx) + Mathf.Abs(dy) < radius;
+                            break;
+                        case ItemShape.Triangle:
+                            filled = dy > -radius * 0.5f && Mathf.Abs(dx) < (radius - dy) * 0.6f;
+                            break;
+                        case ItemShape.Star:
+                            float starRadius = radius * (0.5f + 0.5f * Mathf.Abs(Mathf.Sin(angle * 2.5f)));
+                            filled = dist < starRadius;
+                            break;
+                        case ItemShape.Heart:
+                            float nx = dx / radius;
+                            float ny = -dy / radius;
+                            filled = Mathf.Pow(nx * nx + ny * ny - 1, 3) - nx * nx * ny * ny * ny < 0;
+                            break;
+                        case ItemShape.Hexagon:
+                            float hx = Mathf.Abs(dx);
+                            float hy = Mathf.Abs(dy);
+                            filled = hy < radius * 0.85f && hx < radius * 0.7f && (hx + hy * 0.5f) < radius * 0.85f;
+                            break;
+                    }
+
+                    pixels[y * size + x] = filled ? Color.white : Color.clear;
+                }
+            }
+
+            tex.SetPixels(pixels);
+            tex.Apply();
+            tex.filterMode = FilterMode.Point;
+
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 32f);
         }
 
         private void OnDrawGizmos()
