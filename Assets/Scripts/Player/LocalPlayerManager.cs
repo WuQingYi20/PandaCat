@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
 using BearCar.Cart;
+using BearCar.Item;
 
 namespace BearCar.Player
 {
@@ -83,6 +84,9 @@ namespace BearCar.Player
                 cart.InitializeLocalMode();
             }
 
+            // 初始化道具系统
+            InitializeItemSystem();
+
             // 启动双人
             StartLocalMultiplayerWithBothPlayers();
 
@@ -97,6 +101,66 @@ namespace BearCar.Player
             {
                 DestroyImmediate(bear.gameObject);
                 Debug.Log("[LocalPlayerManager] 立即清理了一个网络 Bear");
+            }
+        }
+
+        private void InitializeItemSystem()
+        {
+            // 创建共享背包（如果不存在）
+            if (SharedInventory.Instance == null)
+            {
+                var inventoryObj = new GameObject("ItemManager");
+                inventoryObj.AddComponent<SharedInventory>();
+                inventoryObj.AddComponent<InventoryUI>();
+                inventoryObj.AddComponent<ItemEffectHandler>();
+                inventoryObj.AddComponent<ItemEffectLog>();
+                Debug.Log("[LocalPlayerManager] 道具系统已创建");
+
+                // 添加测试道具以验证UI工作
+                StartCoroutine(AddTestItemsDelayed());
+            }
+            else if (FindFirstObjectByType<InventoryUI>() == null)
+            {
+                // SharedInventory存在但UI不存在，创建UI
+                var inventoryObj = SharedInventory.Instance.gameObject;
+                inventoryObj.AddComponent<InventoryUI>();
+                Debug.Log("[LocalPlayerManager] InventoryUI 已添加到现有道具系统");
+            }
+
+            // 创建道具生成器（如果不存在）
+            if (FindFirstObjectByType<ItemSpawner>() == null)
+            {
+                var spawnerObj = new GameObject("ItemSpawner");
+                spawnerObj.transform.position = new Vector3(0, 2, 0); // 场景中间上方
+                var spawner = spawnerObj.AddComponent<ItemSpawner>();
+                spawner.spawnInterval = 15f;
+                spawner.maxItems = 3;
+                spawner.spawnRadius = 8f;
+                Debug.Log("[LocalPlayerManager] 道具生成器已创建");
+            }
+        }
+
+        private System.Collections.IEnumerator AddTestItemsDelayed()
+        {
+            // 等待一帧确保SharedInventory已完全初始化
+            yield return null;
+
+            if (SharedInventory.Instance != null)
+            {
+                // 创建测试道具
+                var testItem = ScriptableObject.CreateInstance<ItemData>();
+                testItem.itemName = "测试药水";
+                testItem.description = "用于测试的道具";
+                testItem.itemType = ItemType.StaminaRecover;
+                testItem.shape = ItemShape.Circle;
+                testItem.itemColor = new Color(0.5f, 0.8f, 1f);
+                testItem.effectValue = 2f;
+                testItem.stackable = true;
+                testItem.maxStack = 5;
+
+                // 添加2个测试道具
+                SharedInventory.Instance.AddItem(testItem, 2);
+                Debug.Log("[LocalPlayerManager] 添加了测试道具到背包");
             }
         }
 

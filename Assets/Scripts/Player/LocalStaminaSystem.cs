@@ -35,5 +35,22 @@ namespace BearCar.Player
                 RecoverStamina(config.staminaRecoveryRate * Time.fixedDeltaTime);
             }
         }
+
+        /// <summary>
+        /// 立即恢复指定量的体力（用于道具）
+        /// </summary>
+        public void Recover(float amount)
+        {
+            if (isExhausted)
+            {
+                isExhausted = false;
+                exhaustedTimer = 0f;
+            }
+
+            float maxStamina = config != null ? config.maxStamina : 5f;
+            currentStamina = Mathf.Min(maxStamina, currentStamina + amount);
+
+            Debug.Log($"[Stamina] 恢复 {amount}，当前: {currentStamina}/{maxStamina}");
+        }
     }
 }
