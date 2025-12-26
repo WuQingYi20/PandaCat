@@ -27,12 +27,12 @@ MonoBehaviour:
   - {fileID: 6722843508508181666, guid: 781dbd1dd04935945acb2bea6782ee5a, type: 3}
   - {fileID: 5826651879084840794, guid: 42ce93c560f62ea42b1af230f9cded43, type: 3}
   player1Push:
-  - {fileID: -6628749028707803357, guid: 03934111e56324044899afb6ea2156d4, type: 3}
-  - {fileID: -9028531660307840992, guid: e62582318f854eb46b015fd693e0aadc, type: 3}
-  - {fileID: 2143345142671672408, guid: 2cf5b23792fd9944ebc6f20d66431921, type: 3}
-  - {fileID: 7085903603917300274, guid: 318c8a233a77a174b9fbf73502c2bf73, type: 3}
-  - {fileID: 5150541314837291414, guid: 075c6853f31c865498421262817f7dea, type: 3}
-  - {fileID: -958702779243870039, guid: 385bc1ef7825c2c4e9b7611cec67ee44, type: 3}
+  - {fileID: -1554956643877630350, guid: fe198232f77904a908197d14318db239, type: 3}
+  - {fileID: -5938783020397070370, guid: 53bb6eec5ceb44df9950878482952570, type: 3}
+  - {fileID: 2600858022019581831, guid: b4be7a066eba64622b09dfe751b3c63c, type: 3}
+  - {fileID: -3731536704033221667, guid: ecea365e893074406a9f41c82f1bd0ce, type: 3}
+  - {fileID: 2661862493038219516, guid: 8af7448c692ab4e8798d7bc60c83d8ad, type: 3}
+  - {fileID: -934310184022291222, guid: cd56469a628ed4efda5a01c2e77e1dac, type: 3}
   player2Idle:
   - {fileID: 3859400548071770548, guid: f6bd5547c582c564b811ba990fcec708, type: 3}
   - {fileID: 8756653625930212487, guid: 3b258fc086d9fb243a443383451f34eb, type: 3}
@@ -48,12 +48,12 @@ MonoBehaviour:
   - {fileID: 6917741935074752248, guid: ff78aae06e16bf4459a77453a91e1c26, type: 3}
   - {fileID: -1196174915588648749, guid: 20e8cba7112d7fc4c82a0beec77d194a, type: 3}
   player2Push:
-  - {fileID: 1139520349666336131, guid: 17c10a6a4bed0be4ca5ff05e4356d858, type: 3}
-  - {fileID: -4602054194333392644, guid: 43af22b84e1dbdf42939d300be01671b, type: 3}
-  - {fileID: -848045735975015658, guid: 36a7ad1a2d76d2b4fa7d3fd1df5009f0, type: 3}
-  - {fileID: 1772699135506319738, guid: 379adf7f620c3ac4bb102f0d6b4af936, type: 3}
-  - {fileID: -3324640146025019715, guid: ee3afe36e4e90534b938aa274a839f4b, type: 3}
-  - {fileID: 795328793013825688, guid: 8482a2f691ae13645ae83907269d0c81, type: 3}
+  - {fileID: 2547749864487628702, guid: 5ea9ac11f6d924f20a18c4a51dbb1424, type: 3}
+  - {fileID: -4738725928218803423, guid: 8cd2d003799924b4298f9c0abfd7a0cb, type: 3}
+  - {fileID: 4741424787957645461, guid: b4e7be740fafd486da329fec2d21ca42, type: 3}
+  - {fileID: 137270747054550977, guid: 1733d47d4ea974e8ca2404eaa1972f4f, type: 3}
+  - {fileID: -835377674720006168, guid: d77627e52e2694ab1a03e160dd84bc0a, type: 3}
+  - {fileID: 5596000606554726133, guid: 16ce36a7c070442a6b214e6d983acef5, type: 3}
   frameRate: 6
   player1Tint: {r: 1, g: 1, b: 1, a: 1}
   player2Tint: {r: 1, g: 1, b: 1, a: 1}
