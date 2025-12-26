@@ -279,18 +279,93 @@ namespace BearCar.Editor
         private void PlaceInScene()
         {
             GameObject pickup = new GameObject($"Pickup_{item.itemName}");
+
+            // 添加必要组件
+            var sr = pickup.AddComponent<SpriteRenderer>();
+            var col = pickup.AddComponent<CircleCollider2D>();
+            col.radius = 0.5f;
+            col.isTrigger = true;
+
             var pickupComp = pickup.AddComponent<ItemPickup>();
             pickupComp.itemData = item;
+
+            // 设置视觉效果
+            sr.sprite = CreateItemSprite(item.shape);
+            sr.color = item.itemColor;
+            sr.sortingOrder = 10;
+            pickup.transform.localScale = Vector3.one * 0.8f;
 
             if (SceneView.lastActiveSceneView != null)
             {
                 var cam = SceneView.lastActiveSceneView.camera;
-                pickup.transform.position = cam.transform.position + cam.transform.forward * 5f;
-                pickup.transform.position = new Vector3(pickup.transform.position.x, pickup.transform.position.y, 0);
+                Vector3 pos = cam.transform.position + cam.transform.forward * 5f;
+                pos.z = 0;
+                pickup.transform.position = pos;
             }
 
             Undo.RegisterCreatedObjectUndo(pickup, "Place Item");
             Selection.activeGameObject = pickup;
+        }
+
+        private Sprite CreateItemSprite(ItemShape shape)
+        {
+            int size = 32;
+            Texture2D tex = new Texture2D(size, size);
+            Color[] pixels = new Color[size * size];
+
+            float center = size / 2f;
+            float radius = size / 2f - 2;
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x - center;
+                    float dy = y - center;
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    float angle = Mathf.Atan2(dy, dx);
+
+                    bool filled = false;
+
+                    switch (shape)
+                    {
+                        case ItemShape.Circle:
+                            filled = dist < radius;
+                            break;
+                        case ItemShape.Square:
+                            filled = Mathf.Abs(dx) < radius * 0.7f && Mathf.Abs(dy) < radius * 0.7f;
+                            break;
+                        case ItemShape.Diamond:
+                            filled = Mathf.Abs(dx) + Mathf.Abs(dy) < radius;
+                            break;
+                        case ItemShape.Triangle:
+                            filled = dy > -radius * 0.5f && Mathf.Abs(dx) < (radius - dy) * 0.6f;
+                            break;
+                        case ItemShape.Star:
+                            float starRadius = radius * (0.5f + 0.5f * Mathf.Abs(Mathf.Sin(angle * 2.5f)));
+                            filled = dist < starRadius;
+                            break;
+                        case ItemShape.Heart:
+                            float nx = dx / radius;
+                            float ny = -dy / radius;
+                            filled = Mathf.Pow(nx * nx + ny * ny - 1, 3) - nx * nx * ny * ny * ny < 0;
+                            break;
+                        case ItemShape.Hexagon:
+                            float hx = Mathf.Abs(dx);
+                            float hy = Mathf.Abs(dy);
+                            filled = hy < radius * 0.85f && hx < radius * 0.7f && (hx + hy * 0.5f) < radius * 0.85f;
+                            break;
+                    }
+
+                    pixels[y * size + x] = filled ? Color.white : Color.clear;
+                }
+            }
+
+            tex.SetPixels(pixels);
+            tex.Apply();
+            tex.filterMode = FilterMode.Point;
+
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 32f);
         }
 
         private void DuplicateItem()
@@ -329,7 +404,7 @@ namespace BearCar.Editor
                 case ItemType.Trap_StickyPad: return "🐭 粘鼠板";
                 case ItemType.Tool_Shovel: return "🔧 铲子";
                 case ItemType.Tool_SoulNet: return "👻 灵魂网";
-                case ItemType.Special_EasterEgg: return "🥚 彩蛋";
+                case ItemType.Special_GiftBox: return "🎁 礼物盒";
                 case ItemType.Special_PuddingPad: return "🍮 布丁垫";
                 case ItemType.Obstacle_Rock: return "🪨 石头";
                 default: return item.itemType.ToString();

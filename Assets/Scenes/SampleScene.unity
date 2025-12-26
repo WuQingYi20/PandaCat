@@ -726,6 +726,37 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: -20, y: -10}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &310698989
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 310698990}
+  m_Layer: 0
+  m_Name: ItemPickup
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &310698990
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 310698989}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &370860392
 GameObject:
   m_ObjectHideFlags: 0
@@ -3287,6 +3318,72 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1816141140}
   m_CullTransparentMesh: 1
+--- !u!1 &1818281146
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1818281147}
+  - component: {fileID: 1818281148}
+  m_Layer: 0
+  m_Name: Entrance
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1818281147
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1818281146}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -3, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2145389220}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1818281148
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1818281146}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 639cd04af646cac48b184f31b98a0cf2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BearCar.Level.Portal
+  targetPoint: {fileID: 1826116626}
+  portalId: Portal_A
+  direction: 0
+  targetFilter: 0
+  preserveMomentum: 1
+  momentumMultiplier: 1
+  momentumDirection: 0
+  activation: 0
+  requiredPlayers: 1
+  activationDelay: 0
+  activeDuration: 0
+  cooldownTime: 0.5
+  useFadeEffect: 1
+  fadeOutDuration: 0.3
+  fadeInDuration: 0.3
+  useScaleEffect: 1
+  useRotateEffect: 1
+  portalColor: {r: 0.3, g: 1, b: 0.3, a: 0.8}
+  activeColor: {r: 0.3, g: 1.2, b: 0.3, a: 0.9}
+  inactiveColor: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
+  teleportSound: {fileID: 0}
+  activateSound: {fileID: 0}
 --- !u!1 &1825320380 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6499571860277684640, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
@@ -3308,6 +3405,72 @@ Animation:
   m_AnimatePhysics: 0
   m_UpdateMode: 0
   m_CullingType: 0
+--- !u!1 &1826116625
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1826116626}
+  - component: {fileID: 1826116627}
+  m_Layer: 0
+  m_Name: Exit
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1826116626
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1826116625}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 3, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2145389220}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1826116627
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1826116625}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 639cd04af646cac48b184f31b98a0cf2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BearCar.Level.Portal
+  targetPoint: {fileID: 0}
+  portalId: Portal_A
+  direction: 2
+  targetFilter: 0
+  preserveMomentum: 1
+  momentumMultiplier: 1
+  momentumDirection: 0
+  activation: 0
+  requiredPlayers: 1
+  activationDelay: 0
+  activeDuration: 0
+  cooldownTime: 0.5
+  useFadeEffect: 1
+  fadeOutDuration: 0.3
+  fadeInDuration: 0.3
+  useScaleEffect: 1
+  useRotateEffect: 1
+  portalColor: {r: 1, g: 0.3, b: 0.3, a: 0.8}
+  activeColor: {r: 1, g: 0.5, b: 0.3, a: 0.9}
+  inactiveColor: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
+  teleportSound: {fileID: 0}
+  activateSound: {fileID: 0}
 --- !u!1 &1994990773
 GameObject:
   m_ObjectHideFlags: 0
@@ -3701,6 +3864,39 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2145389219
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2145389220}
+  m_Layer: 0
+  m_Name: OneWayPortal
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &2145389220
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2145389219}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1818281147}
+  - {fileID: 1826116626}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2147464146
 GameObject:
   m_ObjectHideFlags: 0
@@ -3791,3 +3987,5 @@ SceneRoots:
   - {fileID: 1994990774}
   - {fileID: 1126855512}
   - {fileID: 668635097}
+  - {fileID: 2145389220}
+  - {fileID: 310698990}

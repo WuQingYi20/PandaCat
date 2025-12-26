@@ -2,6 +2,7 @@ using UnityEngine;
 using BearCar.Core;
 using BearCar.Cart;
 using BearCar.Item;
+using BearCar.UI;
 
 namespace BearCar.Player
 {
@@ -21,6 +22,7 @@ namespace BearCar.Player
 
         private LocalStaminaSystem staminaSystem;
         private JumpSystem jumpSystem;
+        private PlayerStaminaDisplay staminaDisplay;
 
         public LocalStaminaSystem Stamina => staminaSystem;
         public JumpSystem Jump => jumpSystem;
@@ -45,6 +47,10 @@ namespace BearCar.Player
 
             // 添加体力系统
             staminaSystem = gameObject.AddComponent<LocalStaminaSystem>();
+
+            // 添加体力条显示
+            staminaDisplay = gameObject.AddComponent<PlayerStaminaDisplay>();
+            staminaDisplay.alwaysShow = false; // 体力变化时才显示
 
             // 添加跳跃系统
             jumpSystem = gameObject.AddComponent<JumpSystem>();
@@ -284,6 +290,11 @@ namespace BearCar.Player
                     if (staminaSystem != null)
                     {
                         staminaSystem.Recover(effectValue);
+                        // 强制显示体力条
+                        if (staminaDisplay != null)
+                        {
+                            staminaDisplay.ForceShow(3f);
+                        }
                     }
                     break;
 
@@ -291,6 +302,11 @@ namespace BearCar.Player
                     if (staminaSystem != null)
                     {
                         staminaSystem.Recover(-Mathf.Abs(item.effectValue)); // 负值扣血
+                        // 强制显示体力条
+                        if (staminaDisplay != null)
+                        {
+                            staminaDisplay.ForceShow(3f);
+                        }
                     }
                     break;
 

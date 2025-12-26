@@ -143,8 +143,8 @@ namespace BearCar.Item
                 case ItemType.Obstacle_Rock:
                     return "拦截车辆，可被击碎";
 
-                case ItemType.Special_EasterEgg:
-                    return "击碎后随机奖励！";
+                case ItemType.Special_GiftBox:
+                    return "圣诞礼物！击碎后随机奖励！";
 
                 case ItemType.Special_PuddingPad:
                     return "弹跳平台";
@@ -207,8 +207,8 @@ namespace BearCar.Item
         Tool_SoulNet,
 
         [Header("=== 特殊 ===")]
-        [Tooltip("复活节彩蛋 - 抽奖")]
-        Special_EasterEgg,
+        [Tooltip("圣诞礼物盒 - 抽奖")]
+        Special_GiftBox,
 
         [Tooltip("布丁垫子 - 弹跳")]
         Special_PuddingPad,

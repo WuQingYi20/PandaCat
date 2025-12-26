@@ -117,7 +117,7 @@ namespace BearCar.Editor
 
             // ========== 工具 ==========
             CreateToolItem(folderPath, "Shovel", "铲子",
-                "可以击碎石头和彩蛋",
+                "可以击碎石头和礼物盒",
                 ItemType.Tool_Shovel, new Color(0.7f, 0.5f, 0.3f), ItemShape.Hexagon,
                 ItemRarity.Rare);
 
@@ -127,9 +127,9 @@ namespace BearCar.Editor
                 ItemRarity.Epic);
 
             // ========== 特殊机关 ==========
-            CreateSpecialItem(folderPath, "EasterEgg", "复活节彩蛋",
-                "击碎后会获得随机奖励！",
-                ItemType.Special_EasterEgg, new Color(1f, 0.8f, 0.9f), ItemShape.Diamond,
+            CreateSpecialItem(folderPath, "GiftBox", "圣诞礼物盒",
+                "击碎后会获得随机奖励！圣诞快乐！",
+                ItemType.Special_GiftBox, new Color(0.9f, 0.2f, 0.3f), ItemShape.Square,
                 1f, 0f, ItemRarity.Epic);
 
             CreateSpecialItem(folderPath, "PuddingPad", "布丁垫子",
@@ -305,18 +305,52 @@ namespace BearCar.Editor
         [MenuItem("BearCar/道具系统/在场景中放置道具")]
         public static void PlaceItemInScene()
         {
-            GameObject pickup = new GameObject("ItemPickup");
-            var pickupComp = pickup.AddComponent<ItemPickup>();
-
-            var banana = Resources.Load<ItemData>("Items/Banana");
-            if (banana != null)
+            var itemData = Resources.Load<ItemData>("Items/Banana");
+            if (itemData == null)
             {
-                pickupComp.itemData = banana;
+                // 尝试加载其他道具
+                var allItems = Resources.LoadAll<ItemData>("Items");
+                if (allItems.Length > 0)
+                {
+                    itemData = allItems[0];
+                }
             }
+
+            GameObject pickup = new GameObject($"Pickup_{(itemData != null ? itemData.itemName : "Item")}");
+
+            // 添加必要组件
+            var sr = pickup.AddComponent<SpriteRenderer>();
+            var col = pickup.AddComponent<CircleCollider2D>();
+            col.radius = 0.5f;
+            col.isTrigger = true;
+
+            var pickupComp = pickup.AddComponent<ItemPickup>();
+            pickupComp.itemData = itemData;
+
+            // 设置视觉效果
+            if (itemData != null)
+            {
+                sr.sprite = CreateItemSprite(itemData.shape);
+                sr.color = itemData.itemColor;
+            }
+            else
+            {
+                sr.sprite = CreateItemSprite(ItemShape.Circle);
+                sr.color = Color.yellow;
+            }
+            sr.sortingOrder = 10;
+            pickup.transform.localScale = Vector3.one * 0.8f;
 
             if (Selection.activeGameObject != null)
             {
                 pickup.transform.position = Selection.activeGameObject.transform.position + Vector3.up * 2;
+            }
+            else if (SceneView.lastActiveSceneView != null)
+            {
+                var cam = SceneView.lastActiveSceneView.camera;
+                Vector3 pos = cam.transform.position + cam.transform.forward * 5f;
+                pos.z = 0;
+                pickup.transform.position = pos;
             }
             else
             {
@@ -327,6 +361,67 @@ namespace BearCar.Editor
             Selection.activeGameObject = pickup;
 
             Debug.Log("道具拾取物已创建!");
+        }
+
+        private static Sprite CreateItemSprite(ItemShape shape)
+        {
+            int size = 32;
+            Texture2D tex = new Texture2D(size, size);
+            Color[] pixels = new Color[size * size];
+
+            float center = size / 2f;
+            float radius = size / 2f - 2;
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x - center;
+                    float dy = y - center;
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    float angle = Mathf.Atan2(dy, dx);
+
+                    bool filled = false;
+
+                    switch (shape)
+                    {
+                        case ItemShape.Circle:
+                            filled = dist < radius;
+                            break;
+                        case ItemShape.Square:
+                            filled = Mathf.Abs(dx) < radius * 0.7f && Mathf.Abs(dy) < radius * 0.7f;
+                            break;
+                        case ItemShape.Diamond:
+                            filled = Mathf.Abs(dx) + Mathf.Abs(dy) < radius;
+                            break;
+                        case ItemShape.Triangle:
+                            filled = dy > -radius * 0.5f && Mathf.Abs(dx) < (radius - dy) * 0.6f;
+                            break;
+                        case ItemShape.Star:
+                            float starRadius = radius * (0.5f + 0.5f * Mathf.Abs(Mathf.Sin(angle * 2.5f)));
+                            filled = dist < starRadius;
+                            break;
+                        case ItemShape.Heart:
+                            float nx = dx / radius;
+                            float ny = -dy / radius;
+                            filled = Mathf.Pow(nx * nx + ny * ny - 1, 3) - nx * nx * ny * ny * ny < 0;
+                            break;
+                        case ItemShape.Hexagon:
+                            float hx = Mathf.Abs(dx);
+                            float hy = Mathf.Abs(dy);
+                            filled = hy < radius * 0.85f && hx < radius * 0.7f && (hx + hy * 0.5f) < radius * 0.85f;
+                            break;
+                    }
+
+                    pixels[y * size + x] = filled ? Color.white : Color.clear;
+                }
+            }
+
+            tex.SetPixels(pixels);
+            tex.Apply();
+            tex.filterMode = FilterMode.Point;
+
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 32f);
         }
 
         [MenuItem("BearCar/道具系统/打开设计文档")]
