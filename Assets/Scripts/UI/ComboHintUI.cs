@@ -41,13 +41,30 @@ namespace BearCar.UI
         {
             CreateHintUI();
 
-            // 订阅事件
-            var inventory = SharedInventory.Instance;
-            if (inventory != null)
+            // 延迟订阅事件
+            StartCoroutine(SubscribeToEvents());
+        }
+
+        private System.Collections.IEnumerator SubscribeToEvents()
+        {
+            // 等待 SharedInventory 初始化
+            while (SharedInventory.Instance == null)
             {
-                inventory.OnComboReady += OnComboReady;
-                inventory.OnComboTriggered += OnComboTriggered;
-                inventory.OnItemRemoved += OnItemRemoved;
+                yield return null;
+            }
+
+            var inventory = SharedInventory.Instance;
+            inventory.OnComboReady += OnComboReady;
+            inventory.OnComboTriggered += OnComboTriggered;
+            inventory.OnItemRemoved += OnItemRemoved;
+            Debug.Log("[ComboHintUI] 已订阅道具事件");
+
+            // 检查是否已经有可用的组合（可能在订阅之前就添加了）
+            var (item1, item2) = inventory.GetAvailableCombo();
+            if (item1 != null && item2 != null)
+            {
+                Debug.Log($"[ComboHintUI] 检测到已有组合: {item1.itemName} + {item2.itemName}");
+                OnComboReady(item1, item2);
             }
         }
 
@@ -64,12 +81,12 @@ namespace BearCar.UI
 
         private void Update()
         {
-            if (!isShowingHint) return;
-
+            // 始终检测按键，不仅仅在显示提示时
             // 检测绿熊按键 (Tab)
             if (Input.GetKeyDown(KeyCode.Tab))
             {
                 greenPressTime = Time.time;
+                Debug.Log($"[ComboHint] 绿熊按下Tab, isShowingHint={isShowingHint}");
                 CheckSimultaneousPress();
             }
 
@@ -77,6 +94,7 @@ namespace BearCar.UI
             if (Input.GetKeyDown(KeyCode.Slash))
             {
                 redPressTime = Time.time;
+                Debug.Log($"[ComboHint] 红熊按下/, isShowingHint={isShowingHint}");
                 CheckSimultaneousPress();
             }
         }
@@ -87,8 +105,11 @@ namespace BearCar.UI
             if (greenPressTime < 0 || redPressTime < 0) return;
 
             float timeDiff = Mathf.Abs(greenPressTime - redPressTime);
+            Debug.Log($"[ComboHint] 检测同时按键: 时间差={timeDiff:F3}s, 阈值={SIMULTANEOUS_THRESHOLD}s");
+
             if (timeDiff <= SIMULTANEOUS_THRESHOLD)
             {
+                Debug.Log("[ComboHint] ✓ 同时按键成功！尝试触发组合...");
                 TriggerCombo();
                 // 重置按键时间
                 greenPressTime = -1f;
@@ -354,10 +375,23 @@ namespace BearCar.UI
         private void TriggerCombo()
         {
             var inventory = SharedInventory.Instance;
-            if (inventory != null)
+            if (inventory == null)
             {
-                inventory.TriggerDualPlayerCombo();
+                Debug.LogError("[ComboHint] SharedInventory 不存在!");
+                return;
             }
+
+            // 检查是否有可用的组合
+            var (item1, item2) = inventory.GetAvailableCombo();
+            if (item1 == null || item2 == null)
+            {
+                Debug.Log("[ComboHint] 没有可用的组合道具");
+                return;
+            }
+
+            Debug.Log($"[ComboHint] 尝试触发组合: {item1.itemName} + {item2.itemName}");
+            bool success = inventory.TriggerDualPlayerCombo();
+            Debug.Log($"[ComboHint] 组合触发结果: {(success ? "成功!" : "失败")}");
         }
     }
 }

@@ -45,25 +45,28 @@ namespace BearCar.Player
 
         /// <summary>
         /// 获取指定玩家的动画帧
+        /// 注意: Player 1 (playerIndex=0) = 绿熊, Player 2 (playerIndex=1) = 红熊
+        /// 如果资源中 player1 是红熊图像，这里做反转映射
         /// </summary>
         public Sprite[] GetIdleFrames(int playerIndex)
         {
-            return playerIndex == 0 ? player1Idle : player2Idle;
+            // 反转映射：playerIndex=0(绿熊) 使用 player2 动画，playerIndex=1(红熊) 使用 player1 动画
+            return playerIndex == 0 ? player2Idle : player1Idle;
         }
 
         public Sprite[] GetWalkFrames(int playerIndex)
         {
-            return playerIndex == 0 ? player1Walk : player2Walk;
+            return playerIndex == 0 ? player2Walk : player1Walk;
         }
 
         public Sprite[] GetPushFrames(int playerIndex)
         {
-            return playerIndex == 0 ? player1Push : player2Push;
+            return playerIndex == 0 ? player2Push : player1Push;
         }
 
         public Color GetPlayerTint(int playerIndex)
         {
-            return playerIndex == 0 ? player1Tint : player2Tint;
+            return playerIndex == 0 ? player2Tint : player1Tint;
         }
     }
 }
