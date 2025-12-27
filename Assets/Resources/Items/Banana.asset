@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0bdb143c8dfac54b83c60ba684316df, type: 3}
+  m_Name: Banana
+  m_EditorClassIdentifier: Assembly-CSharp::BearCar.Item.ItemData
+  itemName: "\u9999\u8549"
+  description: "\u9EC4\u6F84\u6F84\u7684\u9999\u8549\uFF0C\u4EBA\u4EBA\u90FD\u7231"
+  rarity: 0
+  icon: {fileID: -6216717191928046694, guid: 4da3c356ca254458e84bb40c9f4c688f, type: 3}
+  itemColor: {r: 1, g: 0.9, b: 0.3, a: 1}
+  shape: 2
+  itemType: 0
+  targetType: 0
+  colorAffinity: 0
+  baseEffect: 2
+  affinityBonus: 0
+  effectValue: 1
+  effectDuration: 0
+  isPlaceable: 0
+  isBreakable: 0
+  breakRewards: []
+  isComboTrigger: 0
+  comboPartner: {fileID: 0}
+  comboResultType: 2
+  stackable: 1
+  maxStack: 5
+  pickupSound: {fileID: 0}
+  useSound: {fileID: 0}
