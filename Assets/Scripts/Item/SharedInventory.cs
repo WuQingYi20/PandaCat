@@ -22,19 +22,27 @@ namespace BearCar.Item
 
         // 道具槽
         private InventorySlot[] slots;
-        private int currentIndex = 0;
+
+        // 双玩家选择指针
+        private int greenBearIndex = 0;  // P1 绿熊的选中槽位
+        private int redBearIndex = 0;    // P2 红熊的选中槽位
 
         // 事件
-        public event Action<int> OnSlotChanged;           // 当前选中槽位改变
+        public event Action<int, int> OnSlotChanged;      // playerIndex, slotIndex
         public event Action<int, ItemData> OnItemAdded;   // 添加道具
         public event Action<int, ItemData> OnItemRemoved; // 移除道具
-        public event Action<int, ItemData> OnItemUsed;    // 使用道具
+        public event Action<int, int, ItemData> OnItemUsed;    // playerIndex, slotIndex, item
         public event Action<ItemData, ItemData> OnComboReady;  // 组合道具就绪
-        public event Action<ItemData, ItemData> OnComboTriggered; // 组合触发
+        public event Action<int, int, ItemData, ItemData> OnComboTriggered; // p1Index, p2Index, item1, item2
 
         public int SlotCount => slotCount;
-        public int CurrentIndex => currentIndex;
+        public int GreenBearIndex => greenBearIndex;
+        public int RedBearIndex => redBearIndex;
         public InventorySlot[] Slots => slots;
+
+        // 兼容旧代码
+        [System.Obsolete("Use GreenBearIndex or RedBearIndex instead")]
+        public int CurrentIndex => greenBearIndex;
 
         private AudioSource audioSource;
 
@@ -169,84 +177,89 @@ namespace BearCar.Item
         }
 
         /// <summary>
-        /// 触发组合效果
+        /// 触发组合效果（使用双人组合模式）
         /// </summary>
+        [System.Obsolete("Use TriggerDualPlayerCombo() instead")]
         public bool TriggerCombo(int playerIndex)
         {
-            var (item1, item2) = GetAvailableCombo();
-            if (item1 == null || item2 == null)
+            return TriggerDualPlayerCombo();
+        }
+
+        /// <summary>
+        /// 获取指定玩家当前选中的槽位索引
+        /// </summary>
+        public int GetPlayerIndex(int playerIndex)
+        {
+            return playerIndex == 0 ? greenBearIndex : redBearIndex;
+        }
+
+        /// <summary>
+        /// 轮换到下一个槽位（玩家专属）
+        /// </summary>
+        public void RotateNext(int playerIndex)
+        {
+            if (playerIndex == 0)
             {
-                Debug.Log("[Inventory] 没有可用的组合");
-                return false;
+                int oldIndex = greenBearIndex;
+                greenBearIndex = (greenBearIndex + 1) % slotCount;
+                OnSlotChanged?.Invoke(playerIndex, greenBearIndex);
+                Debug.Log($"[Inventory] 绿熊轮换: {oldIndex} -> {greenBearIndex}");
+            }
+            else
+            {
+                int oldIndex = redBearIndex;
+                redBearIndex = (redBearIndex + 1) % slotCount;
+                OnSlotChanged?.Invoke(playerIndex, redBearIndex);
+                Debug.Log($"[Inventory] 红熊轮换: {oldIndex} -> {redBearIndex}");
             }
 
-            // 消耗两个道具
-            bool removed1 = false, removed2 = false;
+            PlaySound(rotateSound);
+            CheckForDualPlayerCombo();
+        }
 
-            for (int i = 0; i < slots.Length; i++)
+        /// <summary>
+        /// 轮换到上一个槽位（玩家专属）
+        /// </summary>
+        public void RotatePrev(int playerIndex)
+        {
+            if (playerIndex == 0)
             {
-                if (!removed1 && slots[i].item == item1)
-                {
-                    slots[i].count--;
-                    if (slots[i].count <= 0)
-                    {
-                        slots[i].item = null;
-                        slots[i].count = 0;
-                    }
-                    OnItemRemoved?.Invoke(i, item1);
-                    removed1 = true;
-                }
-                else if (!removed2 && slots[i].item == item2)
-                {
-                    slots[i].count--;
-                    if (slots[i].count <= 0)
-                    {
-                        slots[i].item = null;
-                        slots[i].count = 0;
-                    }
-                    OnItemRemoved?.Invoke(i, item2);
-                    removed2 = true;
-                }
-
-                if (removed1 && removed2) break;
+                int oldIndex = greenBearIndex;
+                greenBearIndex = (greenBearIndex - 1 + slotCount) % slotCount;
+                OnSlotChanged?.Invoke(playerIndex, greenBearIndex);
+                Debug.Log($"[Inventory] 绿熊轮换: {oldIndex} -> {greenBearIndex}");
+            }
+            else
+            {
+                int oldIndex = redBearIndex;
+                redBearIndex = (redBearIndex - 1 + slotCount) % slotCount;
+                OnSlotChanged?.Invoke(playerIndex, redBearIndex);
+                Debug.Log($"[Inventory] 红熊轮换: {oldIndex} -> {redBearIndex}");
             }
 
-            Debug.Log($"[Inventory] 🚀 组合触发: {item1.itemName} + {item2.itemName} = {item1.comboResultType}!");
-            OnComboTriggered?.Invoke(item1, item2);
-
-            return true;
-        }
-
-        /// <summary>
-        /// 轮换到下一个槽位（共享操作）
-        /// </summary>
-        public void RotateNext()
-        {
-            int oldIndex = currentIndex;
-            currentIndex = (currentIndex + 1) % slotCount;
-            OnSlotChanged?.Invoke(currentIndex);
             PlaySound(rotateSound);
-            Debug.Log($"[Inventory] 轮换: {oldIndex} -> {currentIndex}");
+            CheckForDualPlayerCombo();
         }
 
         /// <summary>
-        /// 轮换到上一个槽位（共享操作）
+        /// 兼容旧API - 轮换下一个（默认绿熊）
         /// </summary>
-        public void RotatePrev()
-        {
-            int oldIndex = currentIndex;
-            currentIndex = (currentIndex - 1 + slotCount) % slotCount;
-            OnSlotChanged?.Invoke(currentIndex);
-            PlaySound(rotateSound);
-            Debug.Log($"[Inventory] 轮换: {oldIndex} -> {currentIndex}");
-        }
+        [System.Obsolete("Use RotateNext(playerIndex) instead")]
+        public void RotateNext() => RotateNext(0);
 
         /// <summary>
-        /// 使用当前选中的道具
+        /// 兼容旧API - 轮换上一个（默认绿熊）
+        /// </summary>
+        [System.Obsolete("Use RotatePrev(playerIndex) instead")]
+        public void RotatePrev() => RotatePrev(0);
+
+        /// <summary>
+        /// 使用当前玩家选中的道具
         /// </summary>
         public ItemData UseCurrentItem(int playerIndex)
         {
-            return UseItem(currentIndex, playerIndex);
+            int slotIndex = playerIndex == 0 ? greenBearIndex : redBearIndex;
+            return UseItem(slotIndex, playerIndex);
         }
 
         /// <summary>
@@ -274,7 +287,7 @@ namespace BearCar.Item
                 slot.count = 0;
             }
 
-            OnItemUsed?.Invoke(slotIndex, item);
+            OnItemUsed?.Invoke(playerIndex, slotIndex, item);
             OnItemRemoved?.Invoke(slotIndex, item);
 
             if (item.useSound != null)
@@ -282,8 +295,96 @@ namespace BearCar.Item
                 PlaySound(item.useSound);
             }
 
-            Debug.Log($"[Inventory] 玩家 {playerIndex} 使用了 {item.itemName}");
+            string playerName = playerIndex == 0 ? "绿熊" : "红熊";
+            Debug.Log($"[Inventory] {playerName} 使用了 {item.itemName}");
             return item;
+        }
+
+        /// <summary>
+        /// 检查双玩家组合 - 当两个玩家各自选中组合道具的两部分时触发
+        /// </summary>
+        private void CheckForDualPlayerCombo()
+        {
+            var greenSlot = GetSlot(greenBearIndex);
+            var redSlot = GetSlot(redBearIndex);
+
+            if (greenSlot == null || greenSlot.IsEmpty) return;
+            if (redSlot == null || redSlot.IsEmpty) return;
+
+            var greenItem = greenSlot.item;
+            var redItem = redSlot.item;
+
+            // 检查是否形成组合
+            bool isCombo = false;
+
+            if (greenItem.isComboTrigger && greenItem.comboPartner == redItem)
+            {
+                isCombo = true;
+            }
+            else if (redItem.isComboTrigger && redItem.comboPartner == greenItem)
+            {
+                isCombo = true;
+            }
+
+            if (isCombo)
+            {
+                Debug.Log($"[Inventory] 🎉 双人组合就绪: 绿熊选中 {greenItem.itemName}，红熊选中 {redItem.itemName}!");
+                OnComboReady?.Invoke(greenItem, redItem);
+            }
+        }
+
+        /// <summary>
+        /// 触发双人组合效果 - 两个玩家同时消耗各自选中的道具
+        /// </summary>
+        public bool TriggerDualPlayerCombo()
+        {
+            var greenSlot = GetSlot(greenBearIndex);
+            var redSlot = GetSlot(redBearIndex);
+
+            if (greenSlot == null || greenSlot.IsEmpty) return false;
+            if (redSlot == null || redSlot.IsEmpty) return false;
+
+            var greenItem = greenSlot.item;
+            var redItem = redSlot.item;
+
+            // 检查是否形成组合
+            ItemData triggerItem = null;
+            if (greenItem.isComboTrigger && greenItem.comboPartner == redItem)
+            {
+                triggerItem = greenItem;
+            }
+            else if (redItem.isComboTrigger && redItem.comboPartner == greenItem)
+            {
+                triggerItem = redItem;
+            }
+
+            if (triggerItem == null)
+            {
+                Debug.Log("[Inventory] 当前选中的道具无法组合");
+                return false;
+            }
+
+            // 消耗两个道具
+            greenSlot.count--;
+            if (greenSlot.count <= 0)
+            {
+                greenSlot.item = null;
+                greenSlot.count = 0;
+            }
+            OnItemRemoved?.Invoke(greenBearIndex, greenItem);
+
+            redSlot.count--;
+            if (redSlot.count <= 0)
+            {
+                redSlot.item = null;
+                redSlot.count = 0;
+            }
+            OnItemRemoved?.Invoke(redBearIndex, redItem);
+
+            Debug.Log($"[Inventory] 🚀 双人组合触发: {greenItem.itemName} + {redItem.itemName}!");
+            OnComboTriggered?.Invoke(greenBearIndex, redBearIndex, greenItem, redItem);
+
+            return true;
         }
 
         /// <summary>
@@ -296,11 +397,21 @@ namespace BearCar.Item
         }
 
         /// <summary>
-        /// 获取当前选中的槽位
+        /// 获取指定玩家当前选中的槽位
         /// </summary>
+        public InventorySlot GetPlayerCurrentSlot(int playerIndex)
+        {
+            int index = playerIndex == 0 ? greenBearIndex : redBearIndex;
+            return slots[index];
+        }
+
+        /// <summary>
+        /// 兼容旧API - 获取当前选中的槽位（默认绿熊）
+        /// </summary>
+        [System.Obsolete("Use GetPlayerCurrentSlot(playerIndex) instead")]
         public InventorySlot GetCurrentSlot()
         {
-            return slots[currentIndex];
+            return slots[greenBearIndex];
         }
 
         /// <summary>

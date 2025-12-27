@@ -158,12 +158,8 @@ namespace BearCar.Item
                 DrawSlot(slotRect, i);
             }
 
-            // 绘制当前道具信息
-            var currentSlot = inventory.GetCurrentSlot();
-            if (currentSlot != null && !currentSlot.IsEmpty)
-            {
-                DrawItemInfo(startPos, totalWidth, currentSlot.item);
-            }
+            // 绘制两个玩家选中的道具信息
+            DrawDualPlayerItemInfo(startPos, totalWidth);
 
             // 绘制切换提示
             DrawRotateHint(startPos, totalWidth);
@@ -205,6 +201,61 @@ namespace BearCar.Item
             GUI.Label(actionRect, actionHint, playerHintStyle);
         }
 
+        private void DrawDualPlayerItemInfo(Vector2 startPos, float totalWidth)
+        {
+            var greenSlot = inventory.GetPlayerCurrentSlot(0);
+            var redSlot = inventory.GetPlayerCurrentSlot(1);
+
+            float yOffset = slotSize + 6;
+            float halfWidth = totalWidth / 2 - 10;
+
+            // 绿熊选中的道具
+            if (greenSlot != null && !greenSlot.IsEmpty)
+            {
+                Rect greenRect = new Rect(startPos.x, startPos.y + yOffset, halfWidth, 36);
+                DrawPlayerItemInfo(greenRect, greenSlot.item, greenBearColor, "绿熊", 0);
+            }
+
+            // 红熊选中的道具
+            if (redSlot != null && !redSlot.IsEmpty)
+            {
+                Rect redRect = new Rect(startPos.x + halfWidth + 20, startPos.y + yOffset, halfWidth, 36);
+                DrawPlayerItemInfo(redRect, redSlot.item, redBearColor, "红熊", 1);
+            }
+        }
+
+        private void DrawPlayerItemInfo(Rect rect, ItemData item, Color playerColor, string playerName, int playerIndex)
+        {
+            // 背景
+            GUI.DrawTexture(rect, MakeTexture(2, 2, new Color(0, 0, 0, 0.5f)));
+
+            // 顶部颜色条
+            GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, 2), MakeTexture(1, 1, playerColor));
+
+            // 道具名称
+            var itemNameStyle = new GUIStyle
+            {
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = playerColor }
+            };
+            Rect nameRect = new Rect(rect.x, rect.y + 4, rect.width, 14);
+            GUI.Label(nameRect, $"{playerName}: {item.itemName}", itemNameStyle);
+
+            // 效果值
+            float effect = item.GetEffectForPlayer(playerIndex);
+            string effectText = effect >= 0 ? $"+{effect}" : $"{effect}";
+            var effectStyle = new GUIStyle
+            {
+                fontSize = 10,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = new Color(1, 1, 0.6f) }
+            };
+            Rect effectRect = new Rect(rect.x, rect.y + 18, rect.width, 14);
+            GUI.Label(effectRect, effectText, effectStyle);
+        }
+
         private void DrawItemInfo(Vector2 startPos, float totalWidth, ItemData item)
         {
             // 道具名称
@@ -238,17 +289,45 @@ namespace BearCar.Item
         private void DrawSlot(Rect rect, int index)
         {
             var slot = inventory.GetSlot(index);
-            bool isSelected = index == inventory.CurrentIndex;
+            bool isGreenSelected = index == inventory.GreenBearIndex;
+            bool isRedSelected = index == inventory.RedBearIndex;
             bool isEmpty = slot == null || slot.IsEmpty;
 
-            // 背景
-            Texture2D bgTex = isEmpty ? emptyBgTex : (isSelected ? selectedBgTex : slotBgTex);
+            // 背景颜色
+            Texture2D bgTex;
+            if (isEmpty)
+            {
+                bgTex = emptyBgTex;
+            }
+            else if (isGreenSelected && isRedSelected)
+            {
+                // 两个玩家都选中 - 使用金色
+                bgTex = MakeTexture(2, 2, new Color(1f, 0.9f, 0.3f, 0.8f));
+            }
+            else if (isGreenSelected || isRedSelected)
+            {
+                bgTex = selectedBgTex;
+            }
+            else
+            {
+                bgTex = slotBgTex;
+            }
             GUI.DrawTexture(rect, bgTex);
 
-            // 选中边框
-            if (isSelected)
+            // 选中边框 - 双层显示两个玩家
+            if (isGreenSelected && isRedSelected)
             {
-                DrawBorder(rect, selectedColor, 3);
+                // 两个玩家都选中 - 外层绿色，内层红色
+                DrawBorder(rect, greenBearColor, 4);
+                DrawBorder(new Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4), redBearColor, 2);
+            }
+            else if (isGreenSelected)
+            {
+                DrawBorder(rect, greenBearColor, 3);
+            }
+            else if (isRedSelected)
+            {
+                DrawBorder(rect, redBearColor, 3);
             }
 
             // 道具图标
@@ -272,6 +351,18 @@ namespace BearCar.Item
                     normal = { textColor = new Color(1, 1, 1, 0.3f) }
                 };
                 GUI.Label(rect, (index + 1).ToString(), numStyle);
+            }
+
+            // 玩家选中标记（角落小圆点）
+            if (isGreenSelected)
+            {
+                Rect greenDot = new Rect(rect.x + 2, rect.y + 2, 8, 8);
+                GUI.DrawTexture(greenDot, MakeTexture(1, 1, greenBearColor));
+            }
+            if (isRedSelected)
+            {
+                Rect redDot = new Rect(rect.xMax - 10, rect.y + 2, 8, 8);
+                GUI.DrawTexture(redDot, MakeTexture(1, 1, redBearColor));
             }
         }
 

@@ -16,8 +16,13 @@ namespace BearCar.UI
         [SerializeField] private Color hintColor = new Color(1f, 0.8f, 0.2f);
 
         [Header("=== 提示文本 ===")]
-        [SerializeField] private string comboReadyText = "按住 Q 触发组合: {0} + {1} = 火箭推进!";
+        [SerializeField] private string comboReadyText = "两人同时按使用键触发: {0} + {1} = 火箭推进!";
         [SerializeField] private string comboTriggeredText = "🚀 组合触发! {0} + {1}!";
+
+        // 双人同时按键检测
+        private float greenPressTime = -1f;
+        private float redPressTime = -1f;
+        private const float SIMULTANEOUS_THRESHOLD = 0.3f; // 0.3秒内算同时
 
         private GameObject hintPanel;
         private Text hintText;
@@ -59,10 +64,35 @@ namespace BearCar.UI
 
         private void Update()
         {
-            // Q键触发组合
-            if (isShowingHint && Input.GetKey(KeyCode.Q))
+            if (!isShowingHint) return;
+
+            // 检测绿熊按键 (Tab)
+            if (Input.GetKeyDown(KeyCode.Tab))
+            {
+                greenPressTime = Time.time;
+                CheckSimultaneousPress();
+            }
+
+            // 检测红熊按键 (/)
+            if (Input.GetKeyDown(KeyCode.Slash))
+            {
+                redPressTime = Time.time;
+                CheckSimultaneousPress();
+            }
+        }
+
+        private void CheckSimultaneousPress()
+        {
+            // 检查两个玩家是否在短时间内都按下了使用键
+            if (greenPressTime < 0 || redPressTime < 0) return;
+
+            float timeDiff = Mathf.Abs(greenPressTime - redPressTime);
+            if (timeDiff <= SIMULTANEOUS_THRESHOLD)
             {
                 TriggerCombo();
+                // 重置按键时间
+                greenPressTime = -1f;
+                redPressTime = -1f;
             }
         }
 
@@ -159,13 +189,13 @@ namespace BearCar.UI
             var textGO = new GameObject("HintText");
             textGO.transform.SetParent(hintPanel.transform, false);
             hintText = textGO.AddComponent<Text>();
-            hintText.text = "按住 Q 触发!";
+            hintText.text = "Tab + / 同时按!";
             hintText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            hintText.fontSize = 20;
+            hintText.fontSize = 16;
             hintText.color = hintColor;
             hintText.alignment = TextAnchor.MiddleCenter;
             var textLayout = textGO.AddComponent<LayoutElement>();
-            textLayout.preferredWidth = 120;
+            textLayout.preferredWidth = 140;
             textLayout.preferredHeight = 50;
 
             hintPanel.SetActive(false);
@@ -326,8 +356,7 @@ namespace BearCar.UI
             var inventory = SharedInventory.Instance;
             if (inventory != null)
             {
-                // 获取当前玩家索引（简化处理，使用0）
-                inventory.TriggerCombo(0);
+                inventory.TriggerDualPlayerCombo();
             }
         }
     }

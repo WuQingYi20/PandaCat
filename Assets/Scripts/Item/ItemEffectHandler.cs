@@ -49,7 +49,7 @@ namespace BearCar.Item
             }
         }
 
-        private void HandleItemUsed(int slotIndex, ItemData item)
+        private void HandleItemUsed(int playerIndex, int slotIndex, ItemData item)
         {
             if (item == null) return;
 
@@ -197,11 +197,11 @@ namespace BearCar.Item
         /// <summary>
         /// 处理组合道具触发效果
         /// </summary>
-        private void HandleComboTriggered(ItemData item1, ItemData item2)
+        private void HandleComboTriggered(int greenSlotIndex, int redSlotIndex, ItemData item1, ItemData item2)
         {
             if (item1 == null) return;
 
-            Debug.Log($"[ItemEffect] 🚀 组合触发: {item1.itemName} + {item2.itemName}");
+            Debug.Log($"[ItemEffect] 🚀 双人组合触发: {item1.itemName} + {item2.itemName}");
 
             // 根据组合结果类型执行效果
             switch (item1.comboResultType)

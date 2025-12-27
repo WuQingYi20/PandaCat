@@ -63,14 +63,14 @@ namespace BearCar.Player
 
             if (playerIndex == 0)
             {
-                // Player 1 道具操作
+                // Player 1 (绿熊) 道具操作
                 if (Input.GetKeyDown(P1_ItemPrev))
                 {
-                    inventory.RotatePrev();
+                    inventory.RotatePrev(playerIndex);
                 }
                 if (Input.GetKeyDown(P1_ItemNext))
                 {
-                    inventory.RotateNext();
+                    inventory.RotateNext(playerIndex);
                 }
                 if (Input.GetKeyDown(P1_ItemUse))
                 {
@@ -83,14 +83,14 @@ namespace BearCar.Player
             }
             else
             {
-                // Player 2 道具操作
+                // Player 2 (红熊) 道具操作
                 if (Input.GetKeyDown(P2_ItemPrev))
                 {
-                    inventory.RotatePrev();
+                    inventory.RotatePrev(playerIndex);
                 }
                 if (Input.GetKeyDown(P2_ItemNext))
                 {
-                    inventory.RotateNext();
+                    inventory.RotateNext(playerIndex);
                 }
                 if (Input.GetKeyDown(P2_ItemUse))
                 {
