@@ -29,6 +29,8 @@ namespace BearCar.Item
         public event Action<int, ItemData> OnItemAdded;   // 添加道具
         public event Action<int, ItemData> OnItemRemoved; // 移除道具
         public event Action<int, ItemData> OnItemUsed;    // 使用道具
+        public event Action<ItemData, ItemData> OnComboReady;  // 组合道具就绪
+        public event Action<ItemData, ItemData> OnComboTriggered; // 组合触发
 
         public int SlotCount => slotCount;
         public int CurrentIndex => currentIndex;
@@ -87,6 +89,7 @@ namespace BearCar.Item
                         slots[i].count += toAdd;
                         OnItemAdded?.Invoke(i, item);
                         Debug.Log($"[Inventory] 堆叠 {item.itemName} x{toAdd} 到槽位 {i}");
+                        CheckForCombo(item);
                         return true;
                     }
                 }
@@ -101,12 +104,117 @@ namespace BearCar.Item
                     slots[i].count = count;
                     OnItemAdded?.Invoke(i, item);
                     Debug.Log($"[Inventory] 添加 {item.itemName} 到槽位 {i}");
+                    CheckForCombo(item);
                     return true;
                 }
             }
 
             Debug.Log("[Inventory] 背包已满!");
             return false;
+        }
+
+        /// <summary>
+        /// 检查是否有可用的组合
+        /// </summary>
+        private void CheckForCombo(ItemData newItem)
+        {
+            if (newItem == null || !newItem.isComboTrigger || newItem.comboPartner == null)
+                return;
+
+            // 检查背包中是否有组合伙伴
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (!slots[i].IsEmpty && slots[i].item == newItem.comboPartner)
+                {
+                    Debug.Log($"[Inventory] 🎉 组合就绪: {newItem.itemName} + {newItem.comboPartner.itemName}!");
+                    OnComboReady?.Invoke(newItem, newItem.comboPartner);
+                    return;
+                }
+            }
+
+            // 也检查反向组合
+            for (int i = 0; i < slots.Length; i++)
+            {
+                var slotItem = slots[i].item;
+                if (slotItem != null && slotItem.isComboTrigger && slotItem.comboPartner == newItem)
+                {
+                    Debug.Log($"[Inventory] 🎉 组合就绪: {slotItem.itemName} + {newItem.itemName}!");
+                    OnComboReady?.Invoke(slotItem, newItem);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 检查当前是否有可用的组合
+        /// </summary>
+        public (ItemData, ItemData) GetAvailableCombo()
+        {
+            for (int i = 0; i < slots.Length; i++)
+            {
+                var item = slots[i].item;
+                if (item != null && item.isComboTrigger && item.comboPartner != null)
+                {
+                    // 检查是否有组合伙伴
+                    for (int j = 0; j < slots.Length; j++)
+                    {
+                        if (i != j && slots[j].item == item.comboPartner)
+                        {
+                            return (item, item.comboPartner);
+                        }
+                    }
+                }
+            }
+            return (null, null);
+        }
+
+        /// <summary>
+        /// 触发组合效果
+        /// </summary>
+        public bool TriggerCombo(int playerIndex)
+        {
+            var (item1, item2) = GetAvailableCombo();
+            if (item1 == null || item2 == null)
+            {
+                Debug.Log("[Inventory] 没有可用的组合");
+                return false;
+            }
+
+            // 消耗两个道具
+            bool removed1 = false, removed2 = false;
+
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (!removed1 && slots[i].item == item1)
+                {
+                    slots[i].count--;
+                    if (slots[i].count <= 0)
+                    {
+                        slots[i].item = null;
+                        slots[i].count = 0;
+                    }
+                    OnItemRemoved?.Invoke(i, item1);
+                    removed1 = true;
+                }
+                else if (!removed2 && slots[i].item == item2)
+                {
+                    slots[i].count--;
+                    if (slots[i].count <= 0)
+                    {
+                        slots[i].item = null;
+                        slots[i].count = 0;
+                    }
+                    OnItemRemoved?.Invoke(i, item2);
+                    removed2 = true;
+                }
+
+                if (removed1 && removed2) break;
+            }
+
+            Debug.Log($"[Inventory] 🚀 组合触发: {item1.itemName} + {item2.itemName} = {item1.comboResultType}!");
+            OnComboTriggered?.Invoke(item1, item2);
+
+            return true;
         }
 
         /// <summary>

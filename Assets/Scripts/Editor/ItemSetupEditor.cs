@@ -438,6 +438,70 @@ namespace BearCar.Editor
                 Debug.LogWarning($"找不到设计文档: {docPath}");
             }
         }
+
+        [MenuItem("BearCar/道具系统/设置曼妥思+可乐组合")]
+        public static void SetupMentosColaCombo()
+        {
+            string folderPath = "Assets/Resources/Items";
+
+            // 加载曼妥思和可乐
+            var mentos = AssetDatabase.LoadAssetAtPath<ItemData>($"{folderPath}/Mentos.asset");
+            var cola = AssetDatabase.LoadAssetAtPath<ItemData>($"{folderPath}/Cola.asset");
+
+            if (mentos == null || cola == null)
+            {
+                Debug.LogError("找不到曼妥思或可乐道具！请先运行 '创建所有预设道具'");
+                return;
+            }
+
+            // 设置曼妥思为组合触发器
+            mentos.itemType = ItemType.ComboTrigger;
+            mentos.isComboTrigger = true;
+            mentos.comboPartner = cola;
+            mentos.comboResultType = ItemType.RocketBoost;
+            mentos.description = "薄荷糖。和可乐一起使用会触发超级火箭推进！按Q触发组合。";
+
+            // 设置可乐也为组合触发器（双向）
+            cola.isComboTrigger = true;
+            cola.comboPartner = mentos;
+            cola.comboResultType = ItemType.RocketBoost;
+            cola.description = "罐装可乐。和曼妥思一起使用会触发超级火箭推进！按Q触发组合。";
+
+            EditorUtility.SetDirty(mentos);
+            EditorUtility.SetDirty(cola);
+            AssetDatabase.SaveAssets();
+
+            Debug.Log("✅ 曼妥思+可乐组合已设置完成！");
+            Debug.Log("使用方法: 同时拥有曼妥思和可乐时，按Q键触发超级火箭推进！");
+        }
+
+        [MenuItem("BearCar/道具系统/创建组合提示UI")]
+        public static void CreateComboHintUI()
+        {
+            // 检查是否已存在
+            if (FindFirstObjectByType<BearCar.UI.ComboHintUI>() != null)
+            {
+                Debug.Log("ComboHintUI 已存在");
+                Selection.activeGameObject = FindFirstObjectByType<BearCar.UI.ComboHintUI>().gameObject;
+                return;
+            }
+
+            // 查找ItemManager
+            var itemManager = FindFirstObjectByType<SharedInventory>();
+            if (itemManager == null)
+            {
+                Debug.LogWarning("请先创建道具管理器 (BearCar/道具系统/创建道具管理器)");
+                return;
+            }
+
+            // 添加到ItemManager
+            var comboHint = itemManager.gameObject.AddComponent<BearCar.UI.ComboHintUI>();
+
+            Undo.RegisterCompleteObjectUndo(itemManager.gameObject, "Add ComboHintUI");
+            Selection.activeGameObject = itemManager.gameObject;
+
+            Debug.Log("✅ 组合提示UI已添加到道具管理器!");
+        }
     }
 }
 #endif
