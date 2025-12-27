@@ -224,7 +224,7 @@ namespace BearCar.UI
             ShowHint(item1, item2);
         }
 
-        private void OnComboTriggered(ItemData item1, ItemData item2)
+        private void OnComboTriggered(int greenSlotIndex, int redSlotIndex, ItemData item1, ItemData item2)
         {
             // 显示触发成功提示
             if (hintText != null)

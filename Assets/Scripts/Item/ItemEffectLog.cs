@@ -106,13 +106,13 @@ namespace BearCar.Item
             };
         }
 
-        private void OnItemUsed(int slotIndex, ItemData item)
+        private void OnItemUsed(int playerIndex, int slotIndex, ItemData item)
         {
             if (item == null) return;
 
-            // 获取使用者信息（从最近的输入判断）
-            string playerName = GetLastUserName();
-            string effectText = GetEffectDescription(item);
+            // 使用玩家索引确定名称
+            string playerName = playerIndex == 0 ? "绿熊" : "红熊";
+            string effectText = item.GetEffectDescription(playerIndex);
 
             AddLogEntry(playerName, item.itemName, effectText, item.itemColor);
         }
