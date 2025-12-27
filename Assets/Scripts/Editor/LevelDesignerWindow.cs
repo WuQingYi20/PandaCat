@@ -27,6 +27,8 @@ namespace BearCar.Editor
         // 模板相关
         private Vector2 templateScrollPos;
         private AhaTemplate selectedTemplate;
+        private int selectedCategory = 0; // 0=全部, 1-5=具体类别
+        private string[] categoryNames = { "全部", "🔍发现", "🤝同步", "💚牺牲", "🆘救援", "🎯优化" };
 
         // 验证相关
         private Vector2 validationScrollPos;
@@ -492,19 +494,42 @@ namespace BearCar.Editor
         private void DrawAhaTemplatesTab()
         {
             EditorGUILayout.LabelField("✨ Aha Moment 模板", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox("一键放置预设的合作谜题布局，快速创造 Aha Moment！", MessageType.Info);
+            EditorGUILayout.HelpBox("一键放置预设的合作谜题布局，快速创造 Aha Moment！共12个模板，覆盖5种合作类型。", MessageType.Info);
+
+            EditorGUILayout.Space(5);
+
+            // 类别筛选
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("类别筛选:", GUILayout.Width(60));
+            selectedCategory = GUILayout.SelectionGrid(selectedCategory, categoryNames, 6);
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(10);
 
             templateScrollPos = EditorGUILayout.BeginScrollView(templateScrollPos);
 
-            // 6个内置模板
-            DrawTemplateCard(AhaTemplates.ColorSwap);
-            DrawTemplateCard(AhaTemplates.CoopPortal);
-            DrawTemplateCard(AhaTemplates.GiftSurprise);
-            DrawTemplateCard(AhaTemplates.MomentumRush);
-            DrawTemplateCard(AhaTemplates.Teamwork);
-            DrawTemplateCard(AhaTemplates.TimeRace);
+            // 遍历所有12个内置模板
+            var allTemplates = AhaTemplates.AllTemplates;
+            int displayedCount = 0;
+
+            foreach (var template in allTemplates)
+            {
+                // 类别筛选
+                if (selectedCategory != 0)
+                {
+                    AhaCategory targetCategory = (AhaCategory)(selectedCategory - 1);
+                    if (template.category != targetCategory)
+                        continue;
+                }
+
+                DrawTemplateCard(template);
+                displayedCount++;
+            }
+
+            if (displayedCount == 0)
+            {
+                EditorGUILayout.HelpBox("当前类别没有模板", MessageType.Info);
+            }
 
             EditorGUILayout.Space(10);
 
@@ -516,23 +541,43 @@ namespace BearCar.Editor
 
             EditorGUILayout.Space(10);
 
-            // 保存当前选择为模板
+            // 底部按钮
+            EditorGUILayout.BeginHorizontal();
+
             if (GUILayout.Button("💾 保存选中对象为模板", GUILayout.Height(25)))
             {
                 SaveSelectionAsTemplate();
             }
+
+            if (GUILayout.Button("📖 设计原则指南", GUILayout.Height(25)))
+            {
+                CoopDesignPrinciples.ShowPrinciplesWindow();
+            }
+
+            EditorGUILayout.EndHorizontal();
         }
 
         private void DrawTemplateCard(AhaTemplate template)
         {
             EditorGUILayout.BeginVertical("box");
 
+            // 第一行：名称 + 类别标签 + 难度
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField($"{template.emoji} {template.name}", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField($"{template.emoji} {template.name}", EditorStyles.boldLabel, GUILayout.Width(120));
+
+            // 类别标签（带颜色）
+            var categoryStyle = new GUIStyle(EditorStyles.miniLabel);
+            categoryStyle.fontStyle = FontStyle.Bold;
+            Color categoryColor = GetCategoryColor(template.category);
+            categoryStyle.normal.textColor = categoryColor;
+            string categoryName = GetCategoryDisplayName(template.category);
+            GUILayout.Label($"[{categoryName}]", categoryStyle, GUILayout.Width(60));
+
             GUILayout.FlexibleSpace();
             GUILayout.Label($"难度: {template.difficulty}", EditorStyles.miniLabel);
             EditorGUILayout.EndHorizontal();
 
+            // 描述
             EditorGUILayout.LabelField(template.description, EditorStyles.wordWrappedMiniLabel);
 
             EditorGUILayout.Space(3);
@@ -540,7 +585,15 @@ namespace BearCar.Editor
             // Aha 说明
             var ahaStyle = new GUIStyle(EditorStyles.miniLabel);
             ahaStyle.normal.textColor = new Color(1f, 0.8f, 0.2f);
-            EditorGUILayout.LabelField($"💡 Aha: {template.ahaHint}", ahaStyle);
+            EditorGUILayout.LabelField($"💡 Aha: \"{template.ahaHint}\"", ahaStyle);
+
+            // 设计原理（较淡的颜色）
+            if (!string.IsNullOrEmpty(template.designRationale))
+            {
+                var rationaleStyle = new GUIStyle(EditorStyles.wordWrappedMiniLabel);
+                rationaleStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+                EditorGUILayout.LabelField($"📐 原理: {template.designRationale}", rationaleStyle);
+            }
 
             EditorGUILayout.Space(5);
 
@@ -551,6 +604,32 @@ namespace BearCar.Editor
 
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(5);
+        }
+
+        private Color GetCategoryColor(AhaCategory category)
+        {
+            return category switch
+            {
+                AhaCategory.Discovery => new Color(0.3f, 0.8f, 1f),      // 蓝色 - 发现
+                AhaCategory.Synchronization => new Color(0.3f, 1f, 0.5f), // 绿色 - 同步
+                AhaCategory.Sacrifice => new Color(1f, 0.5f, 0.8f),      // 粉色 - 牺牲
+                AhaCategory.Rescue => new Color(1f, 0.6f, 0.2f),         // 橙色 - 救援
+                AhaCategory.Optimization => new Color(0.9f, 0.9f, 0.3f), // 黄色 - 优化
+                _ => Color.white
+            };
+        }
+
+        private string GetCategoryDisplayName(AhaCategory category)
+        {
+            return category switch
+            {
+                AhaCategory.Discovery => "发现",
+                AhaCategory.Synchronization => "同步",
+                AhaCategory.Sacrifice => "牺牲",
+                AhaCategory.Rescue => "救援",
+                AhaCategory.Optimization => "优化",
+                _ => "未知"
+            };
         }
 
         private void PlaceTemplate(AhaTemplate template)
