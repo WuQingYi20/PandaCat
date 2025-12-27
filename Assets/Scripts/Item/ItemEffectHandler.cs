@@ -30,13 +30,22 @@ namespace BearCar.Item
 
         private void Start()
         {
-            // 订阅道具使用事件
-            var inventory = SharedInventory.Instance;
-            if (inventory != null)
+            // 延迟订阅，确保 SharedInventory 已初始化
+            StartCoroutine(SubscribeToEvents());
+        }
+
+        private IEnumerator SubscribeToEvents()
+        {
+            // 等待 SharedInventory 初始化
+            while (SharedInventory.Instance == null)
             {
-                inventory.OnItemUsed += HandleItemUsed;
-                inventory.OnComboTriggered += HandleComboTriggered;
+                yield return null;
             }
+
+            var inventory = SharedInventory.Instance;
+            inventory.OnItemUsed += HandleItemUsed;
+            inventory.OnComboTriggered += HandleComboTriggered;
+            Debug.Log("[ItemEffectHandler] 已订阅道具事件");
         }
 
         private void OnDestroy()

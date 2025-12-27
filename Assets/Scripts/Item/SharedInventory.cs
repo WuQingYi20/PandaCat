@@ -259,6 +259,21 @@ namespace BearCar.Item
         public ItemData UseCurrentItem(int playerIndex)
         {
             int slotIndex = playerIndex == 0 ? greenBearIndex : redBearIndex;
+
+            // 检查是否有可用的组合 - 如果有，不要消耗道具，让combo系统处理
+            var slot = GetSlot(slotIndex);
+            if (slot != null && !slot.IsEmpty && slot.item.isComboTrigger)
+            {
+                // 检查组合伙伴是否也在背包中
+                var (comboItem1, comboItem2) = GetAvailableCombo();
+                if (comboItem1 != null && comboItem2 != null)
+                {
+                    string playerName = playerIndex == 0 ? "绿熊" : "红熊";
+                    Debug.Log($"[Inventory] {playerName} 持有组合道具 {slot.item.itemName}，等待双人同时按键触发组合...");
+                    return null; // 不消耗道具，等待combo触发
+                }
+            }
+
             return UseItem(slotIndex, playerIndex);
         }
 

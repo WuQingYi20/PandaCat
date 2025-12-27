@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: Mentos
   m_EditorClassIdentifier: Assembly-CSharp::BearCar.Item.ItemData
   itemName: "\u66FC\u59A5\u601D"
-  description: "\u8584\u8377\u7CD6\uFF0C\u548C\u53EF\u4E50\u4E00\u8D77\u4F1A\u6709\u5947\u6548\uFF01"
+  description: "\u8584\u8377\u7CD6\u3002\u548C\u53EF\u4E50\u4E00\u8D77\u4F7F\u7528\u4F1A\u89E6\u53D1\u8D85\u7EA7\u706B\u7BAD\u63A8\u8FDB\uFF01\u6309Q\u89E6\u53D1\u7EC4\u5408\u3002"
   rarity: 0
   icon: {fileID: 0}
   itemColor: {r: 1, g: 1, b: 1, a: 1}
   shape: 0
-  itemType: 0
+  itemType: 16
   targetType: 0
   colorAffinity: 0
   baseEffect: 1
@@ -28,8 +28,8 @@ MonoBehaviour:
   isPlaceable: 0
   isBreakable: 0
   breakRewards: []
-  isComboTrigger: 0
-  comboPartner: {fileID: 0}
+  isComboTrigger: 1
+  comboPartner: {fileID: 11400000, guid: 6586f430a42cf7b4a8897e5a1bb285d7, type: 2}
   comboResultType: 2
   stackable: 1
   maxStack: 5

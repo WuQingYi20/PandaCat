@@ -40,6 +40,8 @@ namespace BearCar.Player
         {
             playerIndex = index;
             controller = GetComponent<LocalBearController>();
+            string bearName = playerIndex == 0 ? "绿熊" : "红熊";
+            Debug.Log($"[InputHandler] Initialize: playerIndex={playerIndex} ({bearName}), 使用按键: {(playerIndex == 0 ? "Q/R/Tab" : ",/.//")}");
         }
 
         private void Update()
@@ -66,14 +68,17 @@ namespace BearCar.Player
                 // Player 1 (绿熊) 道具操作
                 if (Input.GetKeyDown(P1_ItemPrev))
                 {
+                    Debug.Log($"[InputHandler] P1(绿熊) 按下 Q，playerIndex={playerIndex}");
                     inventory.RotatePrev(playerIndex);
                 }
                 if (Input.GetKeyDown(P1_ItemNext))
                 {
+                    Debug.Log($"[InputHandler] P1(绿熊) 按下 R，playerIndex={playerIndex}");
                     inventory.RotateNext(playerIndex);
                 }
                 if (Input.GetKeyDown(P1_ItemUse))
                 {
+                    Debug.Log($"[InputHandler] P1(绿熊) 按下 Tab，playerIndex={playerIndex}");
                     var item = inventory.UseCurrentItem(playerIndex);
                     if (item != null)
                     {
@@ -86,14 +91,17 @@ namespace BearCar.Player
                 // Player 2 (红熊) 道具操作
                 if (Input.GetKeyDown(P2_ItemPrev))
                 {
+                    Debug.Log($"[InputHandler] P2(红熊) 按下 ,，playerIndex={playerIndex}");
                     inventory.RotatePrev(playerIndex);
                 }
                 if (Input.GetKeyDown(P2_ItemNext))
                 {
+                    Debug.Log($"[InputHandler] P2(红熊) 按下 .，playerIndex={playerIndex}");
                     inventory.RotateNext(playerIndex);
                 }
                 if (Input.GetKeyDown(P2_ItemUse))
                 {
+                    Debug.Log($"[InputHandler] P2(红熊) 按下 /，playerIndex={playerIndex}");
                     var item = inventory.UseCurrentItem(playerIndex);
                     if (item != null)
                     {

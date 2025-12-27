@@ -20,8 +20,8 @@ namespace BearCar.Player
         [SerializeField] private bool autoStartTwoPlayers = true;
 
         [Header("Spawn Points")]
-        [SerializeField] private Vector3 player1SpawnPos = new Vector3(-6f, 1f, 0f);
-        [SerializeField] private Vector3 player2SpawnPos = new Vector3(-7.5f, 1f, 0f);
+        [SerializeField] private Vector3 player1SpawnPos = new Vector3(-7.5f, 1f, 0f);  // P1(绿熊,WASD) 在左侧
+        [SerializeField] private Vector3 player2SpawnPos = new Vector3(-6f, 1f, 0f);    // P2(红熊,方向键) 在右侧
 
         private List<LocalBearController> localPlayers = new List<LocalBearController>();
         private bool isLocalMultiplayerActive = false;
@@ -114,17 +114,29 @@ namespace BearCar.Player
                 inventoryObj.AddComponent<InventoryUI>();
                 inventoryObj.AddComponent<ItemEffectHandler>();
                 inventoryObj.AddComponent<ItemEffectLog>();
+                inventoryObj.AddComponent<BearCar.UI.ComboHintUI>(); // 添加组合提示UI
                 Debug.Log("[LocalPlayerManager] 道具系统已创建");
 
                 // 添加测试道具以验证UI工作
                 StartCoroutine(AddTestItemsDelayed());
             }
-            else if (FindFirstObjectByType<InventoryUI>() == null)
+            else
             {
-                // SharedInventory存在但UI不存在，创建UI
                 var inventoryObj = SharedInventory.Instance.gameObject;
-                inventoryObj.AddComponent<InventoryUI>();
-                Debug.Log("[LocalPlayerManager] InventoryUI 已添加到现有道具系统");
+
+                // 确保 InventoryUI 存在
+                if (inventoryObj.GetComponent<InventoryUI>() == null)
+                {
+                    inventoryObj.AddComponent<InventoryUI>();
+                    Debug.Log("[LocalPlayerManager] InventoryUI 已添加到现有道具系统");
+                }
+
+                // 确保 ComboHintUI 存在
+                if (inventoryObj.GetComponent<BearCar.UI.ComboHintUI>() == null)
+                {
+                    inventoryObj.AddComponent<BearCar.UI.ComboHintUI>();
+                    Debug.Log("[LocalPlayerManager] ComboHintUI 已添加到现有道具系统");
+                }
             }
 
             // 创建道具生成器（如果不存在）
@@ -147,20 +159,43 @@ namespace BearCar.Player
 
             if (SharedInventory.Instance != null)
             {
-                // 创建测试道具
-                var testItem = ScriptableObject.CreateInstance<ItemData>();
-                testItem.itemName = "测试药水";
-                testItem.description = "用于测试的道具";
-                testItem.itemType = ItemType.StaminaRecover;
-                testItem.shape = ItemShape.Circle;
-                testItem.itemColor = new Color(0.5f, 0.8f, 1f);
-                testItem.effectValue = 2f;
-                testItem.stackable = true;
-                testItem.maxStack = 5;
+                // 尝试加载曼妥思和可乐来测试combo
+                var mentos = Resources.Load<ItemData>("Items/Mentos");
+                var cola = Resources.Load<ItemData>("Items/Cola");
 
-                // 添加2个测试道具
-                SharedInventory.Instance.AddItem(testItem, 2);
-                Debug.Log("[LocalPlayerManager] 添加了测试道具到背包");
+                if (mentos != null && cola != null)
+                {
+                    // 确保combo配置正确
+                    mentos.isComboTrigger = true;
+                    mentos.comboPartner = cola;
+                    mentos.comboResultType = ItemType.RocketBoost;
+
+                    cola.isComboTrigger = true;
+                    cola.comboPartner = mentos;
+                    cola.comboResultType = ItemType.RocketBoost;
+
+                    // 添加到背包
+                    SharedInventory.Instance.AddItem(mentos, 1);
+                    SharedInventory.Instance.AddItem(cola, 1);
+                    Debug.Log("[LocalPlayerManager] 已添加曼妥思和可乐到背包，可以测试combo!");
+                    Debug.Log("[LocalPlayerManager] Combo使用方法: 绿熊选曼妥思，红熊选可乐，同时按 Tab 和 / 键触发!");
+                }
+                else
+                {
+                    // 如果没有曼妥思/可乐，创建测试道具
+                    var testItem = ScriptableObject.CreateInstance<ItemData>();
+                    testItem.itemName = "测试药水";
+                    testItem.description = "用于测试的道具";
+                    testItem.itemType = ItemType.StaminaRecover;
+                    testItem.shape = ItemShape.Circle;
+                    testItem.itemColor = new Color(0.5f, 0.8f, 1f);
+                    testItem.effectValue = 2f;
+                    testItem.stackable = true;
+                    testItem.maxStack = 5;
+
+                    SharedInventory.Instance.AddItem(testItem, 2);
+                    Debug.Log("[LocalPlayerManager] 添加了测试道具到背包");
+                }
             }
         }
 
@@ -309,7 +344,8 @@ namespace BearCar.Player
 
             localPlayers.Add(controller);
 
-            Debug.Log($"[LocalPlayerManager] Player {playerIndex + 1} 已加入");
+            string bearName = playerIndex == 0 ? "绿熊" : "红熊";
+            Debug.Log($"[LocalPlayerManager] Player {playerIndex + 1} ({bearName}) 已创建，GameObject: {playerObj.name}, PlayerIndex: {playerIndex}");
         }
 
         /// <summary>
