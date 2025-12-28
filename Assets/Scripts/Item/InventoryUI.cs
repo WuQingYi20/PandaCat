@@ -37,7 +37,7 @@ namespace BearCar.Item
         [Header("=== 提示文字 ===")]
         public bool showHints = true;
 
-        private SharedInventory inventory;
+            private SharedInventory inventory;
         private GUIStyle slotStyle;
         private GUIStyle countStyle;
         private GUIStyle hintStyle;
@@ -47,6 +47,19 @@ namespace BearCar.Item
         private Texture2D slotBgTex;
         private Texture2D selectedBgTex;
         private Texture2D emptyBgTex;
+
+        // 额外缓存的纹理，避免每帧创建
+        private Texture2D hintBoxBgTex;
+        private Texture2D greenColorBarTex;
+        private Texture2D redColorBarTex;
+        private Texture2D bothSelectedTex;
+        private Texture2D greenDotTex;
+        private Texture2D redDotTex;
+        private Texture2D itemInfoBgTex;
+        private Texture2D itemInfoBgTex2;
+
+        // 形状纹理缓存
+        private System.Collections.Generic.Dictionary<string, Texture2D> shapeTextureCache;
 
         private void Start()
         {
@@ -73,10 +86,23 @@ namespace BearCar.Item
 
         private void InitStyles()
         {
-            // 创建纹理
+            // 创建纹理 - 一次性创建，避免每帧创建
             slotBgTex = MakeTexture(2, 2, slotColor);
             selectedBgTex = MakeTexture(2, 2, selectedColor);
             emptyBgTex = MakeTexture(2, 2, emptyColor);
+
+            // 额外缓存的纹理
+            hintBoxBgTex = MakeTexture(2, 2, new Color(0, 0, 0, 0.6f));
+            greenColorBarTex = MakeTexture(1, 1, greenBearColor);
+            redColorBarTex = MakeTexture(1, 1, redBearColor);
+            bothSelectedTex = MakeTexture(2, 2, new Color(1f, 0.9f, 0.3f, 0.8f));
+            greenDotTex = MakeTexture(1, 1, greenBearColor);
+            redDotTex = MakeTexture(1, 1, redBearColor);
+            itemInfoBgTex = MakeTexture(2, 2, new Color(0, 0, 0, 0.5f));
+            itemInfoBgTex2 = MakeTexture(2, 2, new Color(0, 0, 0, 0.6f));
+
+            // 形状纹理缓存
+            shapeTextureCache = new System.Collections.Generic.Dictionary<string, Texture2D>();
 
             slotStyle = new GUIStyle
             {
@@ -182,12 +208,11 @@ namespace BearCar.Item
 
         private void DrawPlayerHintBox(Rect rect, string playerName, string actionHint, Color playerColor)
         {
-            // 背景
-            Texture2D bgTex = MakeTexture(2, 2, new Color(0, 0, 0, 0.6f));
-            GUI.DrawTexture(rect, bgTex);
+            // 背景 - 使用缓存的纹理
+            GUI.DrawTexture(rect, hintBoxBgTex);
 
-            // 顶部颜色条
-            Texture2D colorBar = MakeTexture(1, 1, playerColor);
+            // 顶部颜色条 - 使用缓存的纹理
+            Texture2D colorBar = (playerColor == greenBearColor) ? greenColorBarTex : redColorBarTex;
             GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, 3), colorBar);
 
             // 玩家名称
@@ -226,11 +251,12 @@ namespace BearCar.Item
 
         private void DrawPlayerItemInfo(Rect rect, ItemData item, Color playerColor, string playerName, int playerIndex)
         {
-            // 背景
-            GUI.DrawTexture(rect, MakeTexture(2, 2, new Color(0, 0, 0, 0.5f)));
+            // 背景 - 使用缓存的纹理
+            GUI.DrawTexture(rect, itemInfoBgTex);
 
-            // 顶部颜色条
-            GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, 2), MakeTexture(1, 1, playerColor));
+            // 顶部颜色条 - 使用缓存的纹理
+            Texture2D colorBar = (playerColor == greenBearColor) ? greenColorBarTex : redColorBarTex;
+            GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, 2), colorBar);
 
             // 道具名称
             var itemNameStyle = new GUIStyle
@@ -293,7 +319,7 @@ namespace BearCar.Item
             bool isRedSelected = index == inventory.RedBearIndex;
             bool isEmpty = slot == null || slot.IsEmpty;
 
-            // 背景颜色
+            // 背景颜色 - 使用缓存的纹理
             Texture2D bgTex;
             if (isEmpty)
             {
@@ -301,8 +327,8 @@ namespace BearCar.Item
             }
             else if (isGreenSelected && isRedSelected)
             {
-                // 两个玩家都选中 - 使用金色
-                bgTex = MakeTexture(2, 2, new Color(1f, 0.9f, 0.3f, 0.8f));
+                // 两个玩家都选中 - 使用缓存的金色纹理
+                bgTex = bothSelectedTex;
             }
             else if (isGreenSelected || isRedSelected)
             {
@@ -353,16 +379,16 @@ namespace BearCar.Item
                 GUI.Label(rect, (index + 1).ToString(), numStyle);
             }
 
-            // 玩家选中标记（角落小圆点）
+            // 玩家选中标记（角落小圆点）- 使用缓存的纹理
             if (isGreenSelected)
             {
-                Rect greenDot = new Rect(rect.x + 2, rect.y + 2, 8, 8);
-                GUI.DrawTexture(greenDot, MakeTexture(1, 1, greenBearColor));
+                Rect greenDotRect = new Rect(rect.x + 2, rect.y + 2, 8, 8);
+                GUI.DrawTexture(greenDotRect, greenDotTex);
             }
             if (isRedSelected)
             {
-                Rect redDot = new Rect(rect.xMax - 10, rect.y + 2, 8, 8);
-                GUI.DrawTexture(redDot, MakeTexture(1, 1, redBearColor));
+                Rect redDotRect = new Rect(rect.xMax - 10, rect.y + 2, 8, 8);
+                GUI.DrawTexture(redDotRect, redDotTex);
             }
         }
 
@@ -394,6 +420,14 @@ namespace BearCar.Item
 
         private Texture2D CreateShapeTexture(ItemShape shape, Color color)
         {
+            // 使用缓存，避免每帧创建纹理
+            string key = $"{shape}_{color.r:F2}_{color.g:F2}_{color.b:F2}";
+
+            if (shapeTextureCache != null && shapeTextureCache.TryGetValue(key, out Texture2D cached))
+            {
+                return cached;
+            }
+
             int size = 32;
             Texture2D tex = new Texture2D(size, size);
             Color[] pixels = new Color[size * size];
@@ -440,12 +474,38 @@ namespace BearCar.Item
 
             tex.SetPixels(pixels);
             tex.Apply();
+
+            // 缓存纹理
+            if (shapeTextureCache != null)
+            {
+                shapeTextureCache[key] = tex;
+            }
+
             return tex;
         }
 
         private void DrawBorder(Rect rect, Color color, float thickness)
         {
-            Texture2D borderTex = MakeTexture(1, 1, color);
+            // 使用缓存的纹理，避免每帧创建
+            Texture2D borderTex;
+            if (color == greenBearColor)
+            {
+                borderTex = greenColorBarTex;
+            }
+            else if (color == redBearColor)
+            {
+                borderTex = redColorBarTex;
+            }
+            else
+            {
+                // 对于其他颜色，创建一次并缓存到形状缓存中
+                string key = $"border_{color.r:F2}_{color.g:F2}_{color.b:F2}";
+                if (!shapeTextureCache.TryGetValue(key, out borderTex))
+                {
+                    borderTex = MakeTexture(1, 1, color);
+                    shapeTextureCache[key] = borderTex;
+                }
+            }
 
             // 上
             GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, thickness), borderTex);

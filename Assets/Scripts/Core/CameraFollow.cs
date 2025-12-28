@@ -18,6 +18,10 @@ namespace BearCar.Core
         [SerializeField] private float minX = -10f;
         [SerializeField] private float maxX = 100f;
 
+        // 缓存刷新控制
+        private float lastTargetCheck;
+        private const float TARGET_CHECK_INTERVAL = 1f; // 只在目标丢失时每秒检查一次
+
         private void Start()
         {
             // 如果没有指定目标，尝试找到车
@@ -42,11 +46,15 @@ namespace BearCar.Core
         {
             if (target == null)
             {
-                // 尝试重新找目标
-                var cart = FindFirstObjectByType<CartController>();
-                if (cart != null)
+                // 限制查找频率，避免每帧查找
+                if (Time.time - lastTargetCheck > TARGET_CHECK_INTERVAL)
                 {
-                    target = cart.transform;
+                    lastTargetCheck = Time.time;
+                    var cart = FindFirstObjectByType<CartController>();
+                    if (cart != null)
+                    {
+                        target = cart.transform;
+                    }
                 }
                 return;
             }

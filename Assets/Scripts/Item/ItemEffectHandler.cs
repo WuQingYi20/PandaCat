@@ -146,23 +146,39 @@ namespace BearCar.Item
             float duration = item.effectDuration > 0 ? item.effectDuration : 5f;
             float range = item.effectValue > 0 ? item.effectValue : 10f;
 
+            // 在效果开始时缓存引用，避免每帧查找
+            var cart = FindFirstObjectByType<CartController>();
+            if (cart == null)
+            {
+                Debug.LogWarning("[ItemEffect] 磁铁效果：找不到车辆");
+                yield break;
+            }
+
+            // 缓存道具列表，每0.5秒刷新一次（因为可能有新道具生成）
+            ItemPickup[] pickups = FindObjectsByType<ItemPickup>(FindObjectsSortMode.None);
+            float lastPickupRefresh = 0f;
+            const float PICKUP_REFRESH_INTERVAL = 0.5f;
+
             float elapsed = 0f;
             while (elapsed < duration)
             {
-                // 吸引附近的道具
-                var pickups = FindObjectsByType<ItemPickup>(FindObjectsSortMode.None);
-                var cart = FindFirstObjectByType<CartController>();
-
-                if (cart != null)
+                // 定期刷新道具列表
+                if (elapsed - lastPickupRefresh > PICKUP_REFRESH_INTERVAL)
                 {
-                    foreach (var pickup in pickups)
+                    pickups = FindObjectsByType<ItemPickup>(FindObjectsSortMode.None);
+                    lastPickupRefresh = elapsed;
+                }
+
+                // 吸引附近的道具
+                foreach (var pickup in pickups)
+                {
+                    if (pickup == null) continue;
+
+                    float dist = Vector2.Distance(pickup.transform.position, cart.transform.position);
+                    if (dist < range)
                     {
-                        float dist = Vector2.Distance(pickup.transform.position, cart.transform.position);
-                        if (dist < range)
-                        {
-                            Vector2 dir = (cart.transform.position - pickup.transform.position).normalized;
-                            pickup.transform.position += (Vector3)dir * Time.deltaTime * 5f;
-                        }
+                        Vector2 dir = (cart.transform.position - pickup.transform.position).normalized;
+                        pickup.transform.position += (Vector3)dir * Time.deltaTime * 5f;
                     }
                 }
 
@@ -238,36 +254,44 @@ namespace BearCar.Item
 
             // 获取车辆
             var cart = FindFirstObjectByType<CartController>();
-            if (cart == null) yield break;
+            if (cart == null)
+            {
+                Debug.LogError("[ItemEffect] 找不到车辆!");
+                yield break;
+            }
 
             var rb = cart.GetComponent<Rigidbody2D>();
-            if (rb == null) yield break;
+            if (rb == null)
+            {
+                Debug.LogError("[ItemEffect] 车辆没有 Rigidbody2D!");
+                yield break;
+            }
 
             float duration = 5f;
             float elapsed = 0f;
-            float boostForce = 15000f;
 
             // 视觉效果 - 屏幕震动
             StartCoroutine(ScreenShakeEffect(duration * 0.5f));
 
-            // 创建粒子效果（如果有粒子系统）
+            // 创建粒子效果
             CreateRocketParticles(cart.transform);
+
+            // 先给一个强大的初始冲击力
+            rb.AddForce(Vector2.right * 8000f, ForceMode2D.Impulse);
+            Debug.Log($"[ItemEffect] 施加初始冲击力! 当前速度: {rb.linearVelocity}");
 
             // 持续推进
             while (elapsed < duration)
             {
-                // 施加强大的推力
-                rb.AddForce(Vector2.right * boostForce * Time.deltaTime, ForceMode2D.Force);
-
-                // 逐渐减弱
-                float t = elapsed / duration;
-                boostForce = Mathf.Lerp(15000f, 3000f, t);
+                // 持续施加推力（不乘 deltaTime，因为 ForceMode2D.Force 会自动处理）
+                float force = Mathf.Lerp(3000f, 500f, elapsed / duration);
+                rb.AddForce(Vector2.right * force, ForceMode2D.Force);
 
                 elapsed += Time.deltaTime;
                 yield return null;
             }
 
-            Debug.Log("[ItemEffect] 🚀 火箭推进结束");
+            Debug.Log($"[ItemEffect] 🚀 火箭推进结束! 最终速度: {rb.linearVelocity}");
         }
 
         private IEnumerator ScreenShakeEffect(float duration)
