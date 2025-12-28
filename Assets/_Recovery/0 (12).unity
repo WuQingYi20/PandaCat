@@ -1849,30 +1849,6 @@ PrefabInstance:
       propertyPath: InScenePlacedSourceGlobalObjectIdHash
       value: 872341431
       objectReference: {fileID: 0}
-    - target: {fileID: 4829183914162300516, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
-      propertyPath: m_Size.x
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4829183914162300516, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
-      propertyPath: m_Size.y
-      value: 0.8
-      objectReference: {fileID: 0}
-    - target: {fileID: 4829183914162300516, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
-      propertyPath: m_SpriteTilingProperty.newSize.x
-      value: 1.18
-      objectReference: {fileID: 0}
-    - target: {fileID: 4829183914162300516, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
-      propertyPath: m_SpriteTilingProperty.newSize.y
-      value: 0.72
-      objectReference: {fileID: 0}
-    - target: {fileID: 4829183914162300516, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
-      propertyPath: m_SpriteTilingProperty.oldSize.x
-      value: 1.18
-      objectReference: {fileID: 0}
-    - target: {fileID: 4829183914162300516, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
-      propertyPath: m_SpriteTilingProperty.oldSize.y
-      value: 0.72
-      objectReference: {fileID: 0}
     - target: {fileID: 5009957102217561889, guid: fa8778c25d88f7a4e8b07a0416a1a3ac, type: 3}
       propertyPath: m_LocalPosition.x
       value: -4
