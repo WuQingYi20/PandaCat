@@ -286,11 +286,20 @@ namespace BearCar.Level
 
             // 检查是否正在传送中
             if (teleportingObjects.Contains(obj)) return;
+            if (activeTeleportCoroutines.ContainsKey(obj)) return;
 
             // 检查传送方向
-            if (direction == PortalDirection.OneWayIn)
+            // OneWayOut = 只能从此门出来，不能进入
+            if (direction == PortalDirection.OneWayOut)
             {
-                // 单向入口，不能从这里传送出去
+                return;
+            }
+
+            // 检查目标门方向
+            // OneWayIn = 只能进入此门，不能作为出口
+            var targetPortalForDirection = targetPoint.GetComponent<Portal>();
+            if (targetPortalForDirection != null && targetPortalForDirection.direction == PortalDirection.OneWayIn)
+            {
                 return;
             }
 
@@ -424,6 +433,15 @@ namespace BearCar.Level
                 ApplyMomentum(rb, velocity);
             }
 
+            // 通知所有熊传送完成
+            foreach (var bear in attachedBears)
+            {
+                if (bear != null)
+                {
+                    NotifyTeleportComplete(bear.gameObject);
+                }
+            }
+
             // 双向冷却
             cooldownTimer = cooldownTime;
             if (targetPortal != null)
@@ -489,6 +507,16 @@ namespace BearCar.Level
 
         private void TeleportImmediate(GameObject obj)
         {
+            // 标记为正在传送
+            teleportingObjects.Add(obj);
+
+            // 通知目标传送门也标记此对象
+            var targetPortal = targetPoint.GetComponent<Portal>();
+            if (targetPortal != null)
+            {
+                targetPortal.teleportingObjects.Add(obj);
+            }
+
             Vector2 velocity = Vector2.zero;
             Rigidbody2D rb = obj.GetComponent<Rigidbody2D>();
 
@@ -509,7 +537,6 @@ namespace BearCar.Level
 
             // 双向冷却 - 入口和出口都进入冷却
             cooldownTimer = cooldownTime;
-            var targetPortal = targetPoint.GetComponent<Portal>();
             if (targetPortal != null)
             {
                 targetPortal.cooldownTimer = targetPortal.cooldownTime;
@@ -521,7 +548,25 @@ namespace BearCar.Level
             // 事件
             OnTeleport?.Invoke(obj);
 
+            // 延迟清理传送标记
+            StartCoroutine(CleanupImmediateTeleport(obj, targetPortal));
+
             Debug.Log($"[Portal] {obj.name} 传送到 {targetPoint.name}");
+        }
+
+        private IEnumerator CleanupImmediateTeleport(GameObject obj, Portal targetPortal)
+        {
+            yield return new WaitForSeconds(0.15f);
+
+            if (obj != null)
+            {
+                teleportingObjects.Remove(obj);
+            }
+
+            if (targetPortal != null && obj != null)
+            {
+                targetPortal.teleportingObjects.Remove(obj);
+            }
         }
 
         /// <summary>
@@ -562,15 +607,9 @@ namespace BearCar.Level
 
         private IEnumerator TeleportWithFade(GameObject obj)
         {
-            // 检查对象是否已经在传送中
-            if (activeTeleportCoroutines.ContainsKey(obj))
-            {
-                Debug.LogWarning($"[Portal] {obj.name} 已经在传送中，跳过");
-                yield break;
-            }
-
             // 标记为正在传送
             teleportingObjects.Add(obj);
+            activeTeleportCoroutines[obj] = null; // 标记协程正在运行
 
             // 通知目标传送门也标记此对象
             var targetPortal = targetPoint.GetComponent<Portal>();
