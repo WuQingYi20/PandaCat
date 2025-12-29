@@ -723,8 +723,11 @@ namespace BearCar.Editor
         private void DrawValidationTab()
         {
             EditorGUILayout.LabelField("✅ 关卡验证", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("全面检查关卡质量：颜色平衡、可达性、难度曲线、Aha密度", MessageType.Info);
 
-            if (GUILayout.Button("运行验证", GUILayout.Height(30)))
+            EditorGUILayout.Space(5);
+
+            if (GUILayout.Button("🔍 运行完整验证", GUILayout.Height(35)))
             {
                 RunValidation();
             }
@@ -733,9 +736,14 @@ namespace BearCar.Editor
 
             if (validationResults.Count == 0)
             {
-                EditorGUILayout.HelpBox("点击\"运行验证\"检查关卡问题", MessageType.Info);
+                EditorGUILayout.HelpBox("点击\"运行完整验证\"检查关卡问题", MessageType.Info);
                 return;
             }
+
+            // 统计摘要
+            DrawValidationSummary();
+
+            EditorGUILayout.Space(5);
 
             validationScrollPos = EditorGUILayout.BeginScrollView(validationScrollPos);
 
@@ -747,34 +755,73 @@ namespace BearCar.Editor
 
             if (errors.Count > 0)
             {
-                EditorGUILayout.LabelField("❌ 错误", EditorStyles.boldLabel);
-                foreach (var r in errors) DrawValidationResult(r);
+                DrawValidationSection("❌ 错误", errors, new Color(1f, 0.3f, 0.3f));
             }
 
             if (warnings.Count > 0)
             {
-                EditorGUILayout.LabelField("⚠️ 警告", EditorStyles.boldLabel);
-                foreach (var r in warnings) DrawValidationResult(r);
+                DrawValidationSection("⚠️ 警告", warnings, new Color(1f, 0.8f, 0.2f));
             }
 
             if (passed.Count > 0)
             {
-                EditorGUILayout.LabelField("✅ 通过", EditorStyles.boldLabel);
-                foreach (var r in passed) DrawValidationResult(r);
+                DrawValidationSection("✅ 通过", passed, new Color(0.3f, 0.9f, 0.4f));
             }
 
             if (suggestions.Count > 0)
             {
-                EditorGUILayout.LabelField("💡 建议", EditorStyles.boldLabel);
-                foreach (var r in suggestions) DrawValidationResult(r);
+                DrawValidationSection("💡 建议", suggestions, new Color(0.5f, 0.8f, 1f));
             }
 
             EditorGUILayout.EndScrollView();
         }
 
+        private void DrawValidationSummary()
+        {
+            var errors = validationResults.Count(r => r.type == ValidationType.Error);
+            var warnings = validationResults.Count(r => r.type == ValidationType.Warning);
+            var passed = validationResults.Count(r => r.type == ValidationType.Pass);
+            var suggestions = validationResults.Count(r => r.type == ValidationType.Suggestion);
+
+            EditorGUILayout.BeginHorizontal("box");
+
+            // 根据结果显示不同颜色的摘要
+            Color summaryColor = errors > 0 ? new Color(1f, 0.5f, 0.5f) :
+                                 warnings > 0 ? new Color(1f, 0.9f, 0.6f) :
+                                 new Color(0.6f, 1f, 0.6f);
+
+            var style = new GUIStyle(EditorStyles.boldLabel);
+            style.normal.textColor = summaryColor;
+
+            string status = errors > 0 ? "需要修复" : warnings > 0 ? "有待改进" : "良好";
+            GUILayout.Label($"状态: {status}", style);
+
+            GUILayout.FlexibleSpace();
+            GUILayout.Label($"❌{errors} ⚠️{warnings} ✅{passed} 💡{suggestions}", EditorStyles.miniLabel);
+
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawValidationSection(string title, List<ValidationResult> results, Color titleColor)
+        {
+            var titleStyle = new GUIStyle(EditorStyles.boldLabel);
+            titleStyle.normal.textColor = titleColor;
+            EditorGUILayout.LabelField(title, titleStyle);
+
+            foreach (var r in results)
+            {
+                DrawValidationResult(r);
+            }
+
+            EditorGUILayout.Space(5);
+        }
+
         private void DrawValidationResult(ValidationResult result)
         {
-            EditorGUILayout.BeginHorizontal("box");
+            EditorGUILayout.BeginVertical("box");
+
+            // 第一行：类别 + 消息
+            EditorGUILayout.BeginHorizontal();
 
             string icon = result.type switch
             {
@@ -783,6 +830,14 @@ namespace BearCar.Editor
                 ValidationType.Suggestion => "💡",
                 _ => "✅"
             };
+
+            // 类别标签
+            if (!string.IsNullOrEmpty(result.category))
+            {
+                var categoryStyle = new GUIStyle(EditorStyles.miniLabel);
+                categoryStyle.fontStyle = FontStyle.Bold;
+                GUILayout.Label($"[{result.category}]", categoryStyle, GUILayout.Width(80));
+            }
 
             EditorGUILayout.LabelField($"{icon} {result.message}", EditorStyles.wordWrappedLabel);
 
@@ -796,112 +851,22 @@ namespace BearCar.Editor
             }
 
             EditorGUILayout.EndHorizontal();
+
+            // 第二行：建议（如果有）
+            if (!string.IsNullOrEmpty(result.suggestion))
+            {
+                var suggestionStyle = new GUIStyle(EditorStyles.wordWrappedMiniLabel);
+                suggestionStyle.normal.textColor = new Color(0.6f, 0.8f, 1f);
+                EditorGUILayout.LabelField($"→ {result.suggestion}", suggestionStyle);
+            }
+
+            EditorGUILayout.EndVertical();
         }
 
         private void RunValidation()
         {
-            validationResults.Clear();
-
-            var pickups = FindObjectsByType<ItemPickup>(FindObjectsSortMode.None);
-            var portals = FindObjectsByType<Portal>(FindObjectsSortMode.None);
-            var plates = FindObjectsByType<PressurePlate>(FindObjectsSortMode.None);
-
-            // 1. 检查道具颜色平衡
-            int greenCount = pickups.Count(p => p.itemData?.colorAffinity == ColorAffinity.Green);
-            int redCount = pickups.Count(p => p.itemData?.colorAffinity == ColorAffinity.Red);
-
-            if (greenCount == 0 && redCount == 0)
-            {
-                validationResults.Add(new ValidationResult
-                {
-                    type = ValidationType.Warning,
-                    message = "场景中没有颜色亲和道具，考虑添加一些来增加合作互动"
-                });
-            }
-            else if (Mathf.Abs(greenCount - redCount) > 2)
-            {
-                string lessColor = greenCount < redCount ? "绿色" : "红色";
-                validationResults.Add(new ValidationResult
-                {
-                    type = ValidationType.Warning,
-                    message = $"{lessColor}道具较少 (绿:{greenCount} 红:{redCount})，建议平衡"
-                });
-            }
-            else
-            {
-                validationResults.Add(new ValidationResult
-                {
-                    type = ValidationType.Pass,
-                    message = $"道具颜色平衡 (绿:{greenCount} 红:{redCount})"
-                });
-            }
-
-            // 2. 检查传送门连接
-            foreach (var portal in portals)
-            {
-                if (portal.targetPoint == null && portal.direction != PortalDirection.OneWayOut)
-                {
-                    validationResults.Add(new ValidationResult
-                    {
-                        type = ValidationType.Error,
-                        message = $"传送门 {portal.portalId} 没有设置目标点",
-                        relatedObject = portal.gameObject
-                    });
-                }
-            }
-
-            if (portals.All(p => p.targetPoint != null || p.direction == PortalDirection.OneWayOut))
-            {
-                validationResults.Add(new ValidationResult
-                {
-                    type = ValidationType.Pass,
-                    message = $"所有传送门连接正常 ({portals.Length}个)"
-                });
-            }
-
-            // 3. 检查合作机关
-            var coopPortals = portals.Where(p => p.activation == PortalActivation.CoopTrigger).ToList();
-            if (coopPortals.Count > 0)
-            {
-                validationResults.Add(new ValidationResult
-                {
-                    type = ValidationType.Pass,
-                    message = $"有 {coopPortals.Count} 个合作传送门，增加了合作互动"
-                });
-            }
-            else
-            {
-                validationResults.Add(new ValidationResult
-                {
-                    type = ValidationType.Suggestion,
-                    message = "考虑添加合作传送门增加双人互动"
-                });
-            }
-
-            // 4. 检查工具和陷阱平衡
-            int trapCount = pickups.Count(p => p.itemData?.itemType == ItemType.Trap_Nail ||
-                                               p.itemData?.itemType == ItemType.Trap_PermanentNail);
-            int toolCount = pickups.Count(p => p.itemData?.itemType == ItemType.Tool_Shovel);
-
-            if (trapCount > 0 && toolCount == 0)
-            {
-                validationResults.Add(new ValidationResult
-                {
-                    type = ValidationType.Warning,
-                    message = "有陷阱但没有工具，玩家可能无法通过"
-                });
-            }
-
-            // 5. Aha Moment 建议
-            if (pickups.Length < 5)
-            {
-                validationResults.Add(new ValidationResult
-                {
-                    type = ValidationType.Suggestion,
-                    message = "道具较少，考虑使用 Aha 模板添加更多互动点"
-                });
-            }
-
+            // 使用新的综合验证器
+            validationResults = LevelValidator.RunFullValidation();
             Debug.Log($"[LevelDesigner] 验证完成: {validationResults.Count} 条结果");
         }
 
@@ -1038,7 +1003,9 @@ namespace BearCar.Editor
     public class ValidationResult
     {
         public ValidationType type;
+        public string category;      // 验证类别 (颜色平衡、可达性等)
         public string message;
+        public string suggestion;    // 具体修复建议
         public GameObject relatedObject;
     }
 
