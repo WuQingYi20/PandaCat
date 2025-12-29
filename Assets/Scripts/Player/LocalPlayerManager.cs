@@ -20,9 +20,15 @@ namespace BearCar.Player
         [SerializeField] private int maxLocalPlayers = 2;
         [SerializeField] private bool autoStartTwoPlayers = true;
 
-        [Header("Spawn Points")]
-        [SerializeField] private Vector3 player1SpawnPos = new Vector3(-7.5f, 1f, 0f);  // P1(绿熊,WASD) 在左侧
-        [SerializeField] private Vector3 player2SpawnPos = new Vector3(-6f, 1f, 0f);    // P2(红熊,方向键) 在右侧
+        [Header("Spawn Points - 可拖入场景中的空物体")]
+        [Tooltip("P1(绿熊) 生成点 - 可拖入场景中的 Transform")]
+        [SerializeField] private Transform player1SpawnPoint;
+        [Tooltip("P2(红熊) 生成点 - 可拖入场景中的 Transform")]
+        [SerializeField] private Transform player2SpawnPoint;
+
+        [Header("Spawn Points - 备用坐标 (无 Transform 时使用)")]
+        [SerializeField] private Vector3 player1SpawnPos = new Vector3(-7.5f, 1f, 0f);
+        [SerializeField] private Vector3 player2SpawnPos = new Vector3(-6f, 1f, 0f);
 
         private List<LocalBearController> localPlayers = new List<LocalBearController>();
         private bool isLocalMultiplayerActive = false;
@@ -51,12 +57,39 @@ namespace BearCar.Player
 
         private void Start()
         {
+            // 自动查找场景中的生成点
+            FindSpawnPointsInScene();
+
             // 自动启动本地双人模式
             if (autoStartTwoPlayers && !hasInitialized)
             {
                 hasInitialized = true;
                 InitializeLocalGame();
             }
+        }
+
+        /// <summary>
+        /// 自动查找场景中的生成点 (通过名称或标签)
+        /// </summary>
+        private void FindSpawnPointsInScene()
+        {
+            // 如果没有手动指定，尝试通过名称查找
+            if (player1SpawnPoint == null)
+            {
+                var p1 = GameObject.Find("P1SpawnPoint") ?? GameObject.Find("Player1Spawn") ?? GameObject.Find("GreenBearSpawn");
+                if (p1 != null) player1SpawnPoint = p1.transform;
+            }
+
+            if (player2SpawnPoint == null)
+            {
+                var p2 = GameObject.Find("P2SpawnPoint") ?? GameObject.Find("Player2Spawn") ?? GameObject.Find("RedBearSpawn");
+                if (p2 != null) player2SpawnPoint = p2.transform;
+            }
+
+            // 输出日志
+            string p1Info = player1SpawnPoint != null ? player1SpawnPoint.name : $"备用坐标 {player1SpawnPos}";
+            string p2Info = player2SpawnPoint != null ? player2SpawnPoint.name : $"备用坐标 {player2SpawnPos}";
+            Debug.Log($"[LocalPlayerManager] 生成点: P1={p1Info}, P2={p2Info}");
         }
 
         /// <summary>
@@ -340,8 +373,17 @@ namespace BearCar.Player
             // 创建玩家对象
             GameObject playerObj = new GameObject($"LocalBear_P{playerIndex + 1}");
 
-            // 设置位置
-            playerObj.transform.position = playerIndex == 0 ? player1SpawnPos : player2SpawnPos;
+            // 设置位置 - 优先使用场景中的 Transform，否则用备用坐标
+            Vector3 spawnPos;
+            if (playerIndex == 0)
+            {
+                spawnPos = player1SpawnPoint != null ? player1SpawnPoint.position : player1SpawnPos;
+            }
+            else
+            {
+                spawnPos = player2SpawnPoint != null ? player2SpawnPoint.position : player2SpawnPos;
+            }
+            playerObj.transform.position = spawnPos;
 
             // 添加组件
             var controller = playerObj.AddComponent<LocalBearController>();
@@ -403,5 +445,56 @@ namespace BearCar.Player
         {
             return new List<LocalBearController>(localPlayers);
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// 编辑器可视化 - 显示生成点位置
+        /// </summary>
+        private void OnDrawGizmos()
+        {
+            // P1 生成点 (绿色)
+            Vector3 p1Pos = player1SpawnPoint != null ? player1SpawnPoint.position : player1SpawnPos;
+            Gizmos.color = new Color(0.3f, 0.9f, 0.4f, 0.8f);
+            Gizmos.DrawWireSphere(p1Pos, 0.5f);
+            Gizmos.DrawIcon(p1Pos + Vector3.up * 0.8f, "d_PlayButton", true);
+            UnityEditor.Handles.Label(p1Pos + Vector3.up * 1.2f, "P1 (WASD)");
+
+            // P2 生成点 (红色)
+            Vector3 p2Pos = player2SpawnPoint != null ? player2SpawnPoint.position : player2SpawnPos;
+            Gizmos.color = new Color(0.9f, 0.3f, 0.3f, 0.8f);
+            Gizmos.DrawWireSphere(p2Pos, 0.5f);
+            Gizmos.DrawIcon(p2Pos + Vector3.up * 0.8f, "d_PlayButton", true);
+            UnityEditor.Handles.Label(p2Pos + Vector3.up * 1.2f, "P2 (Arrows)");
+
+            // 连接线
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawLine(p1Pos, p2Pos);
+        }
+
+        /// <summary>
+        /// 创建生成点物体
+        /// </summary>
+        [UnityEditor.MenuItem("BearCar/创建玩家生成点")]
+        public static void CreateSpawnPoints()
+        {
+            // P1 生成点
+            if (GameObject.Find("P1SpawnPoint") == null)
+            {
+                var p1 = new GameObject("P1SpawnPoint");
+                p1.transform.position = new Vector3(-7.5f, 1f, 0f);
+                UnityEditor.Undo.RegisterCreatedObjectUndo(p1, "Create P1 Spawn Point");
+            }
+
+            // P2 生成点
+            if (GameObject.Find("P2SpawnPoint") == null)
+            {
+                var p2 = new GameObject("P2SpawnPoint");
+                p2.transform.position = new Vector3(-6f, 1f, 0f);
+                UnityEditor.Undo.RegisterCreatedObjectUndo(p2, "Create P2 Spawn Point");
+            }
+
+            Debug.Log("[LocalPlayerManager] 玩家生成点已创建，可在 Scene 视图中拖动调整位置");
+        }
+#endif
     }
 }

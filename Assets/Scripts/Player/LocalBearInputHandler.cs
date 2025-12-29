@@ -51,8 +51,9 @@ namespace BearCar.Player
             Vector2 moveInput = GetMoveInput();
             bool interactPressed = GetInteractPressed();
             bool jumpPressed = GetJumpPressed();
+            bool jumpReleased = GetJumpReleased();
 
-            controller.SetInput(moveInput, interactPressed, jumpPressed);
+            controller.SetInput(moveInput, interactPressed, jumpPressed, jumpReleased);
 
             // 道具操作（共享背包）
             HandleItemInput();
@@ -162,6 +163,18 @@ namespace BearCar.Player
             else
             {
                 return Input.GetKeyDown(P2_Jump);
+            }
+        }
+
+        private bool GetJumpReleased()
+        {
+            if (playerIndex == 0)
+            {
+                return Input.GetKeyUp(P1_Jump);
+            }
+            else
+            {
+                return Input.GetKeyUp(P2_Jump);
             }
         }
     }

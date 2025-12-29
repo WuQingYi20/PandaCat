@@ -131,15 +131,22 @@ namespace BearCar.Player
                 : new Color(0.9f, 0.3f, 0.3f); // 红熊
         }
 
-        public void SetInput(Vector2 move, bool interact, bool jump = false)
+        public void SetInput(Vector2 move, bool interact, bool jump = false, bool jumpReleased = false)
         {
             moveInput = move;
             interactPressed = interact;
 
             // 跳跃（未吸附时）
-            if (jump && !IsAttached && jumpSystem != null)
+            if (jumpSystem != null)
             {
-                jumpSystem.TryJump();
+                if (jump && !IsAttached)
+                {
+                    jumpSystem.TryJump();
+                }
+                if (jumpReleased)
+                {
+                    jumpSystem.ReleaseJump();
+                }
             }
         }
 
@@ -162,6 +169,13 @@ namespace BearCar.Player
             {
                 // 自由移动模式
                 float moveSpeed = config != null ? config.playerMoveSpeed : 5f;
+
+                // 跳跃顶点时获得空中机动加成
+                if (jumpSystem != null)
+                {
+                    moveSpeed *= jumpSystem.ApexSpeedBonus;
+                }
+
                 Vector2 movement = moveInput * moveSpeed;
                 rb.linearVelocity = new Vector2(movement.x, rb.linearVelocity.y);
 
