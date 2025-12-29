@@ -180,53 +180,30 @@ namespace BearCar.Cart
 
         private void SetupPushZone()
         {
-            // 删除旧的 PushZone（如果存在）
-            Transform oldPushZone = transform.Find("PushZone");
-            if (oldPushZone != null)
+            // 删除所有旧的 PushZone
+            string[] oldNames = { "PushZone", "PushZoneLeft", "PushZoneRight" };
+            foreach (var name in oldNames)
             {
-                Destroy(oldPushZone.gameObject);
-                Debug.Log("[Cart] 删除旧的 PushZone");
+                Transform old = transform.Find(name);
+                if (old != null)
+                {
+                    Destroy(old.gameObject);
+                }
             }
 
-            // 创建左侧推车区域（车后方，推动前进）
-            SetupSinglePushZone("PushZoneLeft", new Vector3(-1.5f, 0, 0));
+            // 创建一个统一的大推车区域，覆盖整个车辆周围
+            // 车是 2x1 单位，推车区域设置为 4x2.5，让玩家容易进入
+            GameObject pushZone = new GameObject("PushZone");
+            pushZone.transform.SetParent(transform);
+            pushZone.transform.localPosition = Vector3.zero;
 
-            // 创建右侧推车区域（车前方，推动后退）
-            SetupSinglePushZone("PushZoneRight", new Vector3(1.5f, 0, 0));
-
-            Debug.Log("[Cart] PushZones setup complete (Left & Right)");
-        }
-
-        private void SetupSinglePushZone(string zoneName, Vector3 localPosition)
-        {
-            Transform pushZoneTransform = transform.Find(zoneName);
-            GameObject pushZone;
-
-            if (pushZoneTransform == null)
-            {
-                pushZone = new GameObject(zoneName);
-                pushZone.transform.SetParent(transform);
-                pushZone.transform.localPosition = localPosition;
-            }
-            else
-            {
-                pushZone = pushZoneTransform.gameObject;
-            }
-
-            // 确保有碰撞体
-            var col = pushZone.GetComponent<BoxCollider2D>();
-            if (col == null)
-            {
-                col = pushZone.AddComponent<BoxCollider2D>();
-            }
+            var col = pushZone.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.size = new Vector2(2f, 2f); // 足够大，容纳两只熊
+            col.size = new Vector2(4f, 2.5f); // 大区域，容易抓取
 
-            // 确保有 CartPushZone 脚本
-            if (pushZone.GetComponent<CartPushZone>() == null)
-            {
-                pushZone.AddComponent<CartPushZone>();
-            }
+            pushZone.AddComponent<CartPushZone>();
+
+            Debug.Log($"[Cart] PushZone 设置完成，大小: {col.size}");
         }
 
         private void EnsureVisuals()
@@ -255,7 +232,40 @@ namespace BearCar.Cart
             sr.color = new Color(1f, 0.8f, 0.2f); // 黄色车
             sr.sortingOrder = 5;
 
+            // 确保碰撞体匹配精灵大小
+            EnsureColliderMatchesSprite(sr);
+
             Debug.Log($"[Cart] Visuals set up at position {transform.position}");
+        }
+
+        private void EnsureColliderMatchesSprite(SpriteRenderer sr)
+        {
+            // 获取或创建 BoxCollider2D
+            var boxCol = GetComponent<BoxCollider2D>();
+            if (boxCol == null)
+            {
+                boxCol = gameObject.AddComponent<BoxCollider2D>();
+            }
+
+            // 根据精灵大小设置碰撞体
+            if (sr != null && sr.sprite != null)
+            {
+                // 精灵是 64x32 像素，32ppu，所以是 2x1 单位
+                Vector2 spriteSize = sr.sprite.bounds.size;
+                boxCol.size = spriteSize;
+                boxCol.offset = Vector2.zero;
+
+                Debug.Log($"[Cart] 碰撞体大小设置为: {spriteSize}");
+            }
+            else
+            {
+                // 默认大小
+                boxCol.size = new Vector2(2f, 1f);
+                boxCol.offset = Vector2.zero;
+            }
+
+            // 更新缓存的碰撞体引用
+            cartCollider = boxCol;
         }
 
         private void DetectSlope()
