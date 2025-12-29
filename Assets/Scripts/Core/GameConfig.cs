@@ -31,10 +31,10 @@ namespace BearCar.Core
         public float staminaDrainRate = 1f;
 
         [Tooltip("体力恢复速度 (/秒)")]
-        public float staminaRecoveryRate = 0.5f;
+        public float staminaRecoveryRate = 1.5f;  // 加快3倍: 0.5 -> 1.5
 
         [Tooltip("体力耗尽后恢复延迟 (秒)")]
-        public float exhaustedRecoveryDelay = 1f;
+        public float exhaustedRecoveryDelay = 0.5f;  // 减半: 1 -> 0.5
 
         [Header("Player")]
         [Tooltip("玩家移动速度")]

@@ -22,6 +22,11 @@ namespace BearCar.Player
         private BoxCollider2D col;
         private float pushDirection = 0f;
 
+        // 缓存引用，避免每帧查找
+        private BearController cachedPlayerBear;
+        private float cacheRefreshInterval = 0.5f;
+        private float lastCacheRefresh;
+
         // 模拟的推车状态
         public bool IsPushingCart => isPushing;
         public float PushDirection => pushDirection;
@@ -72,9 +77,14 @@ namespace BearCar.Player
 
         private void Update()
         {
+            // 定期刷新缓存，而不是每帧查找
+            if (Time.time - lastCacheRefresh > cacheRefreshInterval)
+            {
+                RefreshCache();
+            }
+
             if (targetCart == null)
             {
-                targetCart = FindFirstObjectByType<CartController>();
                 return;
             }
 
@@ -97,11 +107,10 @@ namespace BearCar.Player
                 rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
                 isPushing = true;
 
-                // 跟随玩家的推力方向
-                var playerBear = FindFirstObjectByType<BearController>();
-                if (playerBear != null && playerBear.IsPushing.Value)
+                // 跟随玩家的推力方向 - 使用缓存的引用
+                if (cachedPlayerBear != null && cachedPlayerBear.IsPushing.Value)
                 {
-                    pushDirection = playerBear.PushDirection;
+                    pushDirection = cachedPlayerBear.PushDirection;
                 }
                 else
                 {
@@ -113,6 +122,20 @@ namespace BearCar.Player
             spriteRenderer.color = (isPushing && Mathf.Abs(pushDirection) > 0.1f)
                 ? new Color(0.3f, 1f, 0.3f)
                 : new Color(0.5f, 0.7f, 0.5f);
+        }
+
+        private void RefreshCache()
+        {
+            if (targetCart == null)
+            {
+                targetCart = FindFirstObjectByType<CartController>();
+                if (targetCart != null)
+                {
+                    targetCart.RegisterAI(this);
+                }
+            }
+            cachedPlayerBear = FindFirstObjectByType<BearController>();
+            lastCacheRefresh = Time.time;
         }
 
         private void OnDestroy()

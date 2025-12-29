@@ -60,6 +60,10 @@ namespace BearCar.UI
         private bool isExhaustedFlashing = false;
         private float flashTimer = 0f;
 
+        // 恢复闪光效果
+        private float recoveryFlashTimer = 0f;
+        private Color recoveryFlashColor = new Color(0.5f, 1f, 0.6f); // 亮绿色闪光
+
         private void Start()
         {
             bearController = GetComponent<LocalBearController>();
@@ -107,6 +111,13 @@ namespace BearCar.UI
         {
             // 显示体力条
             showTimer = showDuration;
+
+            // 如果是恢复体力，触发超快闪光
+            if (newValue > oldValue + 0.1f)
+            {
+                recoveryFlashTimer = 0.15f; // 0.15秒的超快闪光（实际约0.08秒因为2倍速消耗）
+            }
+
             lastStamina = newValue;
         }
 
@@ -263,6 +274,25 @@ namespace BearCar.UI
             else
             {
                 targetColor = fullColor;
+            }
+
+            // 恢复闪光效果 - 超快闪烁
+            if (recoveryFlashTimer > 0)
+            {
+                recoveryFlashTimer -= Time.deltaTime * 2f;  // 加速消耗，缩短总时长
+                // 超快闪烁：每0.03秒切换一次
+                float flashPhase = (recoveryFlashTimer * 35f) % 1f;
+                if (flashPhase > 0.5f)
+                {
+                    targetColor = recoveryFlashColor;
+                }
+                // 同时放大体力条增加视觉冲击
+                float scale = 1f + Mathf.Max(0, recoveryFlashTimer / 0.15f) * 0.25f;
+                barContainer.localScale = new Vector3(scale, scale, 1f);
+            }
+            else
+            {
+                barContainer.localScale = Vector3.one;
             }
 
             fillRenderer.color = new Color(targetColor.r, targetColor.g, targetColor.b, currentAlpha);

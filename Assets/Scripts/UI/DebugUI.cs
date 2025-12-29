@@ -22,6 +22,16 @@ namespace BearCar.UI
         private Texture2D staminaBarBg;
         private Texture2D staminaBarFill;
 
+        // 缓存引用，避免每帧查找
+        private LocalBearController[] cachedLocalBears;
+        private Cart.CartController cachedCart;
+        private float cacheRefreshInterval = 1f;
+        private float lastCacheRefresh;
+
+        // 缓存体力条纹理，避免每帧创建
+        private Texture2D[] cachedFillTextures;
+        private const int FILL_TEXTURE_COUNT = 10; // 预创建10种颜色的纹理
+
         private void Awake()
         {
             // 确保有 LocalPlayerManager
@@ -35,6 +45,38 @@ namespace BearCar.UI
         private void Start()
         {
             InitStyles();
+            InitCache();
+        }
+
+        private void InitCache()
+        {
+            // 初始化缓存
+            RefreshCache();
+
+            // 预创建体力条纹理（从红到绿的渐变）
+            cachedFillTextures = new Texture2D[FILL_TEXTURE_COUNT];
+            for (int i = 0; i < FILL_TEXTURE_COUNT; i++)
+            {
+                float t = i / (float)(FILL_TEXTURE_COUNT - 1);
+                Color fillColor = Color.Lerp(new Color(0.8f, 0.2f, 0.2f), new Color(0.3f, 0.8f, 0.3f), t);
+                cachedFillTextures[i] = MakeTexture(1, 1, fillColor);
+            }
+        }
+
+        private void RefreshCache()
+        {
+            cachedLocalBears = FindObjectsByType<LocalBearController>(FindObjectsSortMode.None);
+            cachedCart = FindFirstObjectByType<CartController>();
+            lastCacheRefresh = Time.time;
+        }
+
+        private void Update()
+        {
+            // 每秒刷新一次缓存
+            if (Time.time - lastCacheRefresh > cacheRefreshInterval)
+            {
+                RefreshCache();
+            }
         }
 
         private void InitStyles()
@@ -80,11 +122,10 @@ namespace BearCar.UI
 
         private void DrawPlayerHUD()
         {
-            var localBears = FindObjectsByType<LocalBearController>(FindObjectsSortMode.None);
-            if (localBears.Length == 0) return;
+            if (cachedLocalBears == null || cachedLocalBears.Length == 0) return;
 
             // 左上角 Player 1
-            foreach (var bear in localBears)
+            foreach (var bear in cachedLocalBears)
             {
                 if (bear.PlayerIndex == 0)
                 {
@@ -121,13 +162,15 @@ namespace BearCar.UI
                 // 背景
                 GUI.DrawTexture(barRect, staminaBarBg);
 
-                // 填充
-                Color fillColor = bear.Stamina.IsExhaustedValue
-                    ? new Color(0.8f, 0.2f, 0.2f)
-                    : Color.Lerp(new Color(0.8f, 0.2f, 0.2f), new Color(0.3f, 0.8f, 0.3f), staminaPercent);
+                // 填充 - 使用预缓存的纹理，避免每帧创建
+                int textureIndex = bear.Stamina.IsExhaustedValue
+                    ? 0  // 耗尽时用红色
+                    : Mathf.Clamp(Mathf.RoundToInt(staminaPercent * (FILL_TEXTURE_COUNT - 1)), 0, FILL_TEXTURE_COUNT - 1);
 
-                var fillTex = MakeTexture(1, 1, fillColor);
-                GUI.DrawTexture(new Rect(barRect.x, barRect.y, barRect.width * staminaPercent, barRect.height), fillTex);
+                if (cachedFillTextures != null && textureIndex < cachedFillTextures.Length)
+                {
+                    GUI.DrawTexture(new Rect(barRect.x, barRect.y, barRect.width * staminaPercent, barRect.height), cachedFillTextures[textureIndex]);
+                }
             }
 
             GUILayout.EndArea();
@@ -165,23 +208,27 @@ namespace BearCar.UI
 
             GUILayout.Label("=== Debug ===", labelStyle);
 
-            // Cart Info
-            var cart = FindFirstObjectByType<CartController>();
-            if (cart != null)
+            // Cart Info - 使用缓存的引用
+            if (cachedCart != null)
             {
-                GUILayout.Label($"Cart Pos: {cart.transform.position.x:F1}", labelStyle);
-                var rb = cart.GetComponent<Rigidbody2D>();
+                GUILayout.Label($"Cart Pos: {cachedCart.transform.position.x:F1}", labelStyle);
+                var rb = cachedCart.GetComponent<Rigidbody2D>();
                 if (rb != null)
                 {
                     GUILayout.Label($"Cart Vel: {rb.linearVelocity.x:F2}", labelStyle);
                 }
             }
 
-            // Local Bears
-            var localBears = FindObjectsByType<LocalBearController>(FindObjectsSortMode.None);
-            foreach (var bear in localBears)
+            // Local Bears - 使用缓存的引用
+            if (cachedLocalBears != null)
             {
-                GUILayout.Label($"P{bear.PlayerIndex + 1}: Push={bear.IsPushing}, Dir={bear.PushDirection:F1}", labelStyle);
+                foreach (var bear in cachedLocalBears)
+                {
+                    if (bear != null)
+                    {
+                        GUILayout.Label($"P{bear.PlayerIndex + 1}: Push={bear.IsPushing}, Dir={bear.PushDirection:F1}", labelStyle);
+                    }
+                }
             }
 
             GUILayout.EndArea();
