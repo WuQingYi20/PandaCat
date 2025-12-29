@@ -191,19 +191,37 @@ namespace BearCar.Cart
                 }
             }
 
-            // 创建一个统一的大推车区域，覆盖整个车辆周围
-            // 车是 2x1 单位，推车区域设置为 4x2.5，让玩家容易进入
+            // 获取Cart的碰撞体信息，以此为基准创建PushZone
+            Vector2 cartSize = new Vector2(2f, 1f);  // 默认大小
+            Vector2 cartOffset = Vector2.zero;
+
+            var cartBox = GetComponent<BoxCollider2D>();
+            if (cartBox != null)
+            {
+                cartSize = cartBox.size;
+                cartOffset = cartBox.offset;
+            }
+
+            // 创建推车区域，比Cart稍大，方便抓取
+            // 宽度增加2单位（左右各1），高度增加1.5单位
             GameObject pushZone = new GameObject("PushZone");
             pushZone.transform.SetParent(transform);
-            pushZone.transform.localPosition = Vector3.zero;
+            pushZone.transform.localPosition = new Vector3(cartOffset.x, cartOffset.y, 0);
+
+            // 设置Layer（如果PushZone层存在）
+            int pushZoneLayer = LayerMask.NameToLayer("PushZone");
+            if (pushZoneLayer >= 0)
+            {
+                pushZone.layer = pushZoneLayer;
+            }
 
             var col = pushZone.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.size = new Vector2(4f, 2.5f); // 大区域，容易抓取
+            col.size = new Vector2(cartSize.x + 2f, cartSize.y + 1.5f);
 
             pushZone.AddComponent<CartPushZone>();
 
-            Debug.Log($"[Cart] PushZone 设置完成，大小: {col.size}");
+            Debug.Log($"[Cart] PushZone 设置完成，Cart大小: {cartSize}, PushZone大小: {col.size}, 偏移: {cartOffset}");
         }
 
         private void EnsureVisuals()
@@ -641,6 +659,112 @@ namespace BearCar.Cart
             SetupPushZone();
 
             Debug.Log("[Cart] 本地模式初始化完成");
+        }
+
+        /// <summary>
+        /// 获取所有吸附在车上的本地熊
+        /// </summary>
+        public List<LocalBearController> GetAttachedLocalBears()
+        {
+            var result = new List<LocalBearController>();
+            foreach (var bear in localPushSlots)
+            {
+                if (bear != null)
+                {
+                    result.Add(bear);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 检查是否有熊吸附
+        /// </summary>
+        public bool HasAttachedBears()
+        {
+            foreach (var bear in localPushSlots)
+            {
+                if (bear != null) return true;
+            }
+            foreach (var bear in pushSlots)
+            {
+                if (bear != null) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 传送车和所有吸附的熊（整体移动）
+        /// </summary>
+        public void TeleportWithAttachedBears(Vector3 targetPosition)
+        {
+            // 计算位移
+            Vector3 offset = targetPosition - transform.position;
+
+            // 传送车 - 同时设置transform和rigidbody位置确保同步
+            TeleportObject(gameObject, targetPosition);
+
+            // 移动所有吸附的本地熊
+            foreach (var bear in localPushSlots)
+            {
+                if (bear != null)
+                {
+                    TeleportObject(bear.gameObject, bear.transform.position + offset);
+                }
+            }
+
+            // 移动网络熊
+            foreach (var bear in pushSlots)
+            {
+                if (bear != null)
+                {
+                    TeleportObject(bear.gameObject, bear.transform.position + offset);
+                }
+            }
+
+            // 强制同步物理系统
+            Physics2D.SyncTransforms();
+
+            Debug.Log($"[Cart] 整体传送到 {targetPosition}，包含 {GetAttachedLocalBears().Count} 只吸附的熊");
+        }
+
+        /// <summary>
+        /// 安全地传送一个对象（同步transform和rigidbody）
+        /// </summary>
+        private void TeleportObject(GameObject obj, Vector3 targetPos)
+        {
+            if (obj == null) return;
+
+            // 设置transform位置
+            obj.transform.position = targetPos;
+
+            // 同步Rigidbody2D位置（关键！）
+            var rb2d = obj.GetComponent<Rigidbody2D>();
+            if (rb2d != null)
+            {
+                // 暂时禁用插值以避免视觉延迟
+                var oldInterpolation = rb2d.interpolation;
+                rb2d.interpolation = RigidbodyInterpolation2D.None;
+
+                // 直接设置rigidbody位置
+                rb2d.position = targetPos;
+
+                // 重置速度（可选，根据需要）
+                // rb2d.linearVelocity = Vector2.zero;
+
+                // 恢复插值设置（延迟一帧）
+                StartCoroutine(RestoreInterpolation(rb2d, oldInterpolation));
+            }
+        }
+
+        private System.Collections.IEnumerator RestoreInterpolation(Rigidbody2D rb, RigidbodyInterpolation2D interpolation)
+        {
+            yield return new WaitForFixedUpdate();
+            yield return null; // 等待一帧
+            if (rb != null)
+            {
+                rb.interpolation = interpolation;
+            }
         }
     }
 }

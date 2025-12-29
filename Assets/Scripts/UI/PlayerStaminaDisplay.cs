@@ -127,7 +127,8 @@ namespace BearCar.UI
             barContainer = new GameObject("StaminaBar").transform;
             barContainer.SetParent(transform);
             barContainer.localPosition = offset;
-            barContainer.localRotation = Quaternion.identity;
+            // 使用世界旋转确保体力条始终水平（不受父物体旋转影响）
+            barContainer.rotation = Quaternion.identity;
 
             // 创建纹理
             Texture2D whiteTex = new Texture2D(1, 1);
@@ -191,6 +192,15 @@ namespace BearCar.UI
 
             // 力竭闪烁效果
             UpdateExhaustedFlash(isExhausted);
+        }
+
+        private void LateUpdate()
+        {
+            // 保持体力条始终水平（不跟随父物体旋转）
+            if (barContainer != null)
+            {
+                barContainer.rotation = Quaternion.identity;
+            }
         }
 
         private void UpdateVisibility()

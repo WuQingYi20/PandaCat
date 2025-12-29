@@ -373,6 +373,13 @@ namespace BearCar.Player
             // 创建玩家对象
             GameObject playerObj = new GameObject($"LocalBear_P{playerIndex + 1}");
 
+            // 设置Layer（如果Bear层存在）
+            int bearLayer = LayerMask.NameToLayer("Bear");
+            if (bearLayer >= 0)
+            {
+                playerObj.layer = bearLayer;
+            }
+
             // 设置位置 - 优先使用场景中的 Transform，否则用备用坐标
             Vector3 spawnPos;
             if (playerIndex == 0)

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using BearCar.Player;
 using BearCar.Cart;
+using BearCar.Core;
 
 namespace BearCar.Level
 {
@@ -59,7 +60,7 @@ namespace BearCar.Level
 
         [Header("=== 冷却设置 ===")]
         [Tooltip("传送冷却时间")]
-        public float cooldownTime = 0.5f;
+        public float cooldownTime = 0.1f;
 
         [Header("=== 渐变效果 ===")]
         [Tooltip("启用传送渐变效果")]
@@ -104,6 +105,12 @@ namespace BearCar.Level
 
         // 正在传送中的对象（防止重复传送）
         private HashSet<GameObject> teleportingObjects = new HashSet<GameObject>();
+
+        // 存储对象的原始缩放（用于确保恢复）
+        private Dictionary<GameObject, Vector3> originalScales = new Dictionary<GameObject, Vector3>();
+
+        // 正在进行的传送协程
+        private Dictionary<GameObject, Coroutine> activeTeleportCoroutines = new Dictionary<GameObject, Coroutine>();
 
         // 事件
         public System.Action<GameObject> OnTeleport;
@@ -287,10 +294,36 @@ namespace BearCar.Level
                 return;
             }
 
-            // 检查目标过滤
-            bool isPlayer = obj.GetComponent<LocalBearController>() != null || obj.GetComponent<BearController>() != null;
-            bool isCart = obj.GetComponent<CartController>() != null;
+            // 检查目标过滤（使用GetComponentInParent以支持子物体触发）
+            var localBear = obj.GetComponent<LocalBearController>();
+            var netBear = obj.GetComponent<BearController>();
+            // Cart可能是通过子物体(如PushZone)触发的，所以用GetComponentInParent
+            var cart = obj.GetComponentInParent<CartController>();
+            bool isPlayer = localBear != null || netBear != null;
+            bool isCart = cart != null;
             bool isAI = obj.GetComponent<BearAI>() != null;
+
+            // 如果是Cart的子物体触发的，使用Cart作为传送目标
+            if (isCart && obj != cart.gameObject)
+            {
+                // 检查Cart本身是否已经在传送中
+                if (teleportingObjects.Contains(cart.gameObject)) return;
+                obj = cart.gameObject;
+            }
+
+            // 如果是吸附状态的熊，改为传送车（整体传送）
+            if (localBear != null && localBear.IsAttached)
+            {
+                // 找到吸附的车，改为传送车
+                var attachedCart = FindAttachedCart(localBear);
+                if (attachedCart != null)
+                {
+                    obj = attachedCart.gameObject;
+                    cart = attachedCart;
+                    isCart = true;
+                    isPlayer = false;
+                }
+            }
 
             switch (targetFilter)
             {
@@ -308,14 +341,149 @@ namespace BearCar.Level
                     break;
             }
 
-            // 执行传送
-            if (useFadeEffect)
+            // 执行传送（车带熊整体传送，不使用渐变效果以避免复杂性）
+            if (isCart && cart != null && cart.HasAttachedBears())
+            {
+                TeleportCartWithBears(cart);
+            }
+            else if (useFadeEffect)
             {
                 StartCoroutine(TeleportWithFade(obj));
             }
             else
             {
                 TeleportImmediate(obj);
+            }
+        }
+
+        /// <summary>
+        /// 找到熊吸附的车
+        /// </summary>
+        private CartController FindAttachedCart(LocalBearController bear)
+        {
+            var carts = FindObjectsByType<CartController>(FindObjectsSortMode.None);
+            foreach (var cart in carts)
+            {
+                var attachedBears = cart.GetAttachedLocalBears();
+                if (attachedBears.Contains(bear))
+                {
+                    return cart;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 传送车和所有吸附的熊
+        /// </summary>
+        private void TeleportCartWithBears(CartController cart)
+        {
+            // 标记车和所有熊为传送中
+            teleportingObjects.Add(cart.gameObject);
+            var attachedBears = cart.GetAttachedLocalBears();
+            foreach (var bear in attachedBears)
+            {
+                teleportingObjects.Add(bear.gameObject);
+            }
+
+            // 也标记Cart的所有子物体（如PushZone），防止它们触发出口Portal
+            foreach (Transform child in cart.transform)
+            {
+                teleportingObjects.Add(child.gameObject);
+            }
+
+            // 通知目标传送门
+            var targetPortal = targetPoint.GetComponent<Portal>();
+            if (targetPortal != null)
+            {
+                targetPortal.teleportingObjects.Add(cart.gameObject);
+                foreach (var bear in attachedBears)
+                {
+                    targetPortal.teleportingObjects.Add(bear.gameObject);
+                }
+                foreach (Transform child in cart.transform)
+                {
+                    targetPortal.teleportingObjects.Add(child.gameObject);
+                }
+            }
+
+            // 保存车的速度
+            Vector2 velocity = Vector2.zero;
+            Rigidbody2D rb = cart.GetComponent<Rigidbody2D>();
+            if (rb != null && preserveMomentum)
+            {
+                velocity = rb.linearVelocity * momentumMultiplier;
+            }
+
+            // 整体传送
+            cart.TeleportWithAttachedBears(targetPoint.position);
+
+            // 应用速度
+            if (rb != null)
+            {
+                ApplyMomentum(rb, velocity);
+            }
+
+            // 双向冷却
+            cooldownTimer = cooldownTime;
+            if (targetPortal != null)
+            {
+                targetPortal.cooldownTimer = targetPortal.cooldownTime;
+            }
+
+            // 音效
+            PlayTeleportSound();
+
+            // 事件
+            OnTeleport?.Invoke(cart.gameObject);
+
+            // 延迟清理传送标记
+            StartCoroutine(CleanupCartTeleport(cart, attachedBears, targetPortal));
+
+            Debug.Log($"[Portal] 车和 {attachedBears.Count} 只熊整体传送到 {targetPoint.name}");
+        }
+
+        private System.Collections.IEnumerator CleanupCartTeleport(CartController cart, List<LocalBearController> bears, Portal targetPortal)
+        {
+            yield return new WaitForSeconds(0.2f);
+
+            if (cart != null)
+            {
+                teleportingObjects.Remove(cart.gameObject);
+
+                // 清理子物体
+                foreach (Transform child in cart.transform)
+                {
+                    teleportingObjects.Remove(child.gameObject);
+                }
+            }
+
+            foreach (var bear in bears)
+            {
+                if (bear != null)
+                {
+                    teleportingObjects.Remove(bear.gameObject);
+                }
+            }
+
+            if (targetPortal != null)
+            {
+                if (cart != null)
+                {
+                    targetPortal.teleportingObjects.Remove(cart.gameObject);
+                    foreach (Transform child in cart.transform)
+                    {
+                        targetPortal.teleportingObjects.Remove(child.gameObject);
+                    }
+                }
+
+                foreach (var bear in bears)
+                {
+                    if (bear != null)
+                    {
+                        targetPortal.teleportingObjects.Remove(bear.gameObject);
+                    }
+                }
             }
         }
 
@@ -330,14 +498,22 @@ namespace BearCar.Level
                 velocity = rb.linearVelocity * momentumMultiplier;
             }
 
-            // 传送位置
-            obj.transform.position = targetPoint.position;
+            // 安全传送（同步transform和rigidbody）
+            SafeTeleport(obj, targetPoint.position);
 
             // 应用速度
             ApplyMomentum(rb, velocity);
 
-            // 冷却
+            // 通知传送完成
+            NotifyTeleportComplete(obj);
+
+            // 双向冷却 - 入口和出口都进入冷却
             cooldownTimer = cooldownTime;
+            var targetPortal = targetPoint.GetComponent<Portal>();
+            if (targetPortal != null)
+            {
+                targetPortal.cooldownTimer = targetPortal.cooldownTime;
+            }
 
             // 音效
             PlayTeleportSound();
@@ -348,8 +524,51 @@ namespace BearCar.Level
             Debug.Log($"[Portal] {obj.name} 传送到 {targetPoint.name}");
         }
 
+        /// <summary>
+        /// 安全传送 - 同步transform和rigidbody位置，避免collider脱离
+        /// </summary>
+        private void SafeTeleport(GameObject obj, Vector3 targetPos)
+        {
+            if (obj == null) return;
+
+            obj.transform.position = targetPos;
+
+            var rb = obj.GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                // 暂时禁用插值
+                var oldInterpolation = rb.interpolation;
+                rb.interpolation = RigidbodyInterpolation2D.None;
+
+                // 同步rigidbody位置
+                rb.position = targetPos;
+
+                // 延迟恢复插值
+                StartCoroutine(RestoreRbInterpolation(rb, oldInterpolation));
+            }
+
+            // 强制同步物理
+            Physics2D.SyncTransforms();
+        }
+
+        private System.Collections.IEnumerator RestoreRbInterpolation(Rigidbody2D rb, RigidbodyInterpolation2D interpolation)
+        {
+            yield return new WaitForFixedUpdate();
+            if (rb != null)
+            {
+                rb.interpolation = interpolation;
+            }
+        }
+
         private IEnumerator TeleportWithFade(GameObject obj)
         {
+            // 检查对象是否已经在传送中
+            if (activeTeleportCoroutines.ContainsKey(obj))
+            {
+                Debug.LogWarning($"[Portal] {obj.name} 已经在传送中，跳过");
+                yield break;
+            }
+
             // 标记为正在传送
             teleportingObjects.Add(obj);
 
@@ -371,30 +590,50 @@ namespace BearCar.Level
 
             // 获取所有 SpriteRenderer
             var renderers = obj.GetComponentsInChildren<SpriteRenderer>();
-            var originalColors = new Color[renderers.Length];
-            var originalScales = new Vector3[renderers.Length];
-            Vector3 originalScale = obj.transform.localScale;
+            var originalRendererColors = new Color[renderers.Length];
+
+            // 获取并存储原始缩放（如果还没有存储）
+            // 这确保即使对象已经被缩放过，我们也能恢复到正确的大小
+            Vector3 trueOriginalScale;
+            if (originalScales.ContainsKey(obj))
+            {
+                trueOriginalScale = originalScales[obj];
+            }
+            else
+            {
+                trueOriginalScale = obj.transform.localScale;
+                originalScales[obj] = trueOriginalScale;
+            }
+
             Quaternion originalRotation = obj.transform.rotation;
 
             for (int i = 0; i < renderers.Length; i++)
             {
-                originalColors[i] = renderers[i].color;
-                originalScales[i] = renderers[i].transform.localScale;
+                originalRendererColors[i] = renderers[i].color;
             }
 
             // 暂停物理
             bool wasKinematic = false;
+            float originalGravityScale = 1f;
             if (rb != null)
             {
                 wasKinematic = rb.isKinematic;
+                originalGravityScale = rb.gravityScale;
                 rb.linearVelocity = Vector2.zero;
                 rb.isKinematic = true;
             }
 
             // === 消失动画 ===
             float elapsed = 0f;
-            while (elapsed < fadeOutDuration)
+            bool interrupted = false;
+            while (elapsed < fadeOutDuration && !interrupted)
             {
+                if (obj == null)
+                {
+                    interrupted = true;
+                    break;
+                }
+
                 elapsed += Time.deltaTime;
                 float t = elapsed / fadeOutDuration;
                 float easeT = 1f - Mathf.Pow(1f - t, 2f); // EaseOut
@@ -402,16 +641,19 @@ namespace BearCar.Level
                 // 透明度渐变
                 for (int i = 0; i < renderers.Length; i++)
                 {
-                    Color c = originalColors[i];
-                    c.a = Mathf.Lerp(originalColors[i].a, 0f, easeT);
-                    renderers[i].color = c;
+                    if (renderers[i] != null)
+                    {
+                        Color c = originalRendererColors[i];
+                        c.a = Mathf.Lerp(originalRendererColors[i].a, 0f, easeT);
+                        renderers[i].color = c;
+                    }
                 }
 
                 // 缩放效果
                 if (useScaleEffect)
                 {
                     float scale = Mathf.Lerp(1f, 0.3f, easeT);
-                    obj.transform.localScale = originalScale * scale;
+                    obj.transform.localScale = trueOriginalScale * scale;
                 }
 
                 // 旋转效果
@@ -424,17 +666,35 @@ namespace BearCar.Level
                 yield return null;
             }
 
+            if (interrupted || obj == null)
+            {
+                CleanupTeleport(obj, targetPortal);
+                yield break;
+            }
+
             // === 传送 ===
+            // 同步设置transform和rigidbody位置
             obj.transform.position = targetPoint.position;
             obj.transform.rotation = originalRotation;
+            if (rb != null)
+            {
+                rb.position = targetPoint.position;
+            }
+            Physics2D.SyncTransforms();
 
             // 音效
             PlayTeleportSound();
 
             // === 出现动画 ===
             elapsed = 0f;
-            while (elapsed < fadeInDuration)
+            while (elapsed < fadeInDuration && !interrupted)
             {
+                if (obj == null)
+                {
+                    interrupted = true;
+                    break;
+                }
+
                 elapsed += Time.deltaTime;
                 float t = elapsed / fadeInDuration;
                 float easeT = 1f - Mathf.Pow(1f - t, 3f); // EaseOut cubic
@@ -442,16 +702,19 @@ namespace BearCar.Level
                 // 透明度渐变
                 for (int i = 0; i < renderers.Length; i++)
                 {
-                    Color c = originalColors[i];
-                    c.a = Mathf.Lerp(0f, originalColors[i].a, easeT);
-                    renderers[i].color = c;
+                    if (renderers[i] != null)
+                    {
+                        Color c = originalRendererColors[i];
+                        c.a = Mathf.Lerp(0f, originalRendererColors[i].a, easeT);
+                        renderers[i].color = c;
+                    }
                 }
 
                 // 缩放效果
                 if (useScaleEffect)
                 {
                     float scale = Mathf.Lerp(0.3f, 1f, easeT);
-                    obj.transform.localScale = originalScale * scale;
+                    obj.transform.localScale = trueOriginalScale * scale;
                 }
 
                 // 旋转效果（反向）
@@ -464,36 +727,116 @@ namespace BearCar.Level
                 yield return null;
             }
 
-            // 恢复原始状态
+            if (interrupted || obj == null)
+            {
+                CleanupTeleport(obj, targetPortal);
+                yield break;
+            }
+
+            // === 恢复原始状态 ===
             for (int i = 0; i < renderers.Length; i++)
             {
-                renderers[i].color = originalColors[i];
+                if (renderers[i] != null)
+                {
+                    renderers[i].color = originalRendererColors[i];
+                }
             }
-            obj.transform.localScale = originalScale;
+            obj.transform.localScale = trueOriginalScale;
             obj.transform.rotation = originalRotation;
 
             // 恢复物理
             if (rb != null)
             {
                 rb.isKinematic = wasKinematic;
+                rb.gravityScale = originalGravityScale;
                 ApplyMomentum(rb, velocity);
             }
 
-            // 冷却
+            // 通知熊的跳跃系统重置地面检测
+            NotifyTeleportComplete(obj);
+
+            // 双向冷却 - 入口和出口都进入冷却
             cooldownTimer = cooldownTime;
+            if (targetPortal != null)
+            {
+                targetPortal.cooldownTimer = targetPortal.cooldownTime;
+            }
 
             // 事件
             OnTeleport?.Invoke(obj);
 
             // 延迟移除传送标记（防止立即再次触发）
-            yield return new WaitForSeconds(0.1f);
-            teleportingObjects.Remove(obj);
-            if (targetPortal != null)
-            {
-                targetPortal.teleportingObjects.Remove(obj);
-            }
+            yield return new WaitForSeconds(0.15f);
+            CleanupTeleport(obj, targetPortal);
 
             Debug.Log($"[Portal] {obj.name} 传送到 {targetPoint.name} (带渐变)");
+        }
+
+        /// <summary>
+        /// 清理传送状态
+        /// </summary>
+        private void CleanupTeleport(GameObject obj, Portal targetPortal)
+        {
+            if (obj != null)
+            {
+                // 先恢复缩放再移除记录
+                if (originalScales.TryGetValue(obj, out Vector3 savedScale))
+                {
+                    obj.transform.localScale = savedScale;
+                    originalScales.Remove(obj);
+                }
+
+                teleportingObjects.Remove(obj);
+                activeTeleportCoroutines.Remove(obj);
+            }
+
+            if (targetPortal != null)
+            {
+                if (obj != null && targetPortal.originalScales.TryGetValue(obj, out Vector3 targetSavedScale))
+                {
+                    obj.transform.localScale = targetSavedScale;
+                    targetPortal.originalScales.Remove(obj);
+                }
+                targetPortal.teleportingObjects.Remove(obj);
+            }
+        }
+
+        /// <summary>
+        /// 当Portal被禁用时，恢复所有正在传送对象的状态
+        /// </summary>
+        private void OnDisable()
+        {
+            // 恢复所有对象的原始缩放
+            foreach (var kvp in originalScales)
+            {
+                if (kvp.Key != null)
+                {
+                    kvp.Key.transform.localScale = kvp.Value;
+                }
+            }
+            originalScales.Clear();
+            teleportingObjects.Clear();
+            activeTeleportCoroutines.Clear();
+        }
+
+        /// <summary>
+        /// 通知对象传送完成，重置相关系统
+        /// </summary>
+        private void NotifyTeleportComplete(GameObject obj)
+        {
+            // 通知跳跃系统
+            var jumpSystem = obj.GetComponent<JumpSystem>();
+            if (jumpSystem != null)
+            {
+                jumpSystem.OnTeleported();
+            }
+
+            // 通知熊控制器
+            var bearController = obj.GetComponent<LocalBearController>();
+            if (bearController != null)
+            {
+                bearController.OnTeleported();
+            }
         }
 
         private void ApplyMomentum(Rigidbody2D rb, Vector2 velocity)

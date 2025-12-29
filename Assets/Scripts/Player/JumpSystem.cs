@@ -86,9 +86,26 @@ namespace BearCar.Player
             rb = GetComponent<Rigidbody2D>();
             col = GetComponent<Collider2D>();
 
+            // 设置地面检测层 - 多重回退机制
             if (groundLayer == 0)
             {
                 groundLayer = LayerMask.GetMask("Ground");
+            }
+
+            // 如果Ground层不存在，使用更宽松的检测（排除Bear和Cart层）
+            if (groundLayer == 0)
+            {
+                int bearLayer = LayerMask.NameToLayer("Bear");
+                int cartLayer = LayerMask.NameToLayer("Cart");
+                int pushZoneLayer = LayerMask.NameToLayer("PushZone");
+
+                // 默认检测所有层，但排除Bear, Cart, PushZone
+                groundLayer = ~0; // 所有层
+                if (bearLayer >= 0) groundLayer &= ~(1 << bearLayer);
+                if (cartLayer >= 0) groundLayer &= ~(1 << cartLayer);
+                if (pushZoneLayer >= 0) groundLayer &= ~(1 << pushZoneLayer);
+
+                Debug.LogWarning("[JumpSystem] Ground层未找到，使用回退检测模式");
             }
 
             // 根据期望的跳跃高度和时间计算物理值
@@ -171,9 +188,11 @@ namespace BearCar.Player
 
             if (col != null)
             {
+                // 使用多点检测提高准确性
                 Vector2 boxCenter = (Vector2)transform.position + Vector2.down * (col.bounds.extents.y);
                 Vector2 boxSize = new Vector2(col.bounds.size.x * 0.9f, groundCheckDistance);
 
+                // 主检测：BoxCast
                 isGrounded = Physics2D.BoxCast(
                     boxCenter,
                     boxSize,
@@ -182,15 +201,45 @@ namespace BearCar.Player
                     groundCheckDistance,
                     groundLayer
                 );
+
+                // 备用检测：如果BoxCast失败，用多条Raycast检测
+                if (!isGrounded)
+                {
+                    float halfWidth = col.bounds.size.x * 0.4f;
+                    Vector2 basePos = (Vector2)transform.position + Vector2.down * (col.bounds.extents.y - 0.05f);
+                    float checkDist = groundCheckDistance + 0.1f;
+
+                    // 左中右三条射线
+                    isGrounded = Physics2D.Raycast(basePos, Vector2.down, checkDist, groundLayer) ||
+                                 Physics2D.Raycast(basePos + Vector2.left * halfWidth, Vector2.down, checkDist, groundLayer) ||
+                                 Physics2D.Raycast(basePos + Vector2.right * halfWidth, Vector2.down, checkDist, groundLayer);
+                }
             }
             else
             {
+                // 无碰撞体时的回退检测
                 isGrounded = Physics2D.Raycast(
                     transform.position,
                     Vector2.down,
                     1.1f,
                     groundLayer
                 );
+            }
+
+            // 额外检查：如果速度接近0且在下落，可能卡在地面上
+            if (!isGrounded && rb != null && Mathf.Abs(rb.linearVelocity.y) < 0.1f && rb.linearVelocity.y <= 0)
+            {
+                // 用OverlapCircle检测是否有地面在脚下
+                Vector2 footPos = (Vector2)transform.position;
+                if (col != null)
+                {
+                    footPos += Vector2.down * col.bounds.extents.y;
+                }
+                var hit = Physics2D.OverlapCircle(footPos, 0.15f, groundLayer);
+                if (hit != null)
+                {
+                    isGrounded = true;
+                }
             }
 
             // 刚落地
@@ -286,6 +335,41 @@ namespace BearCar.Player
         /// </summary>
         public bool IsFalling => rb != null && rb.linearVelocity.y < -0.1f;
 
+        /// <summary>
+        /// 传送完成后调用 - 重置地面检测和跳跃状态
+        /// </summary>
+        public void OnTeleported()
+        {
+            // 重置土狼时间（防止传送后空中跳跃）
+            lastGroundedTime = 0f;
+            lastJumpPressedTime = 0f;
+
+            // 重置跳跃次数
+            jumpCount = 0;
+
+            // 强制进行一次地面检测
+            CheckGrounded();
+
+            // 如果传送后在地面上，确保重力恢复正常
+            if (rb != null && isGrounded)
+            {
+                rb.gravityScale = defaultGravityScale;
+            }
+
+            Debug.Log($"[JumpSystem] 传送完成，重置状态: isGrounded={isGrounded}");
+        }
+
+        /// <summary>
+        /// 强制重置重力到默认值
+        /// </summary>
+        public void ResetGravity()
+        {
+            if (rb != null)
+            {
+                rb.gravityScale = defaultGravityScale;
+            }
+        }
+
 #if UNITY_EDITOR
         private void OnValidate()
         {
@@ -308,6 +392,17 @@ namespace BearCar.Player
 
             // 显示跳跃高度数值
             UnityEditor.Handles.Label(apexPos + Vector3.right * 0.3f, $"跳跃高度: {jumpHeight}");
+
+            // 可视化地面检测范围
+            var collider = GetComponent<Collider2D>();
+            if (collider != null)
+            {
+                Vector3 boxCenter = transform.position + Vector3.down * collider.bounds.extents.y;
+                Vector3 boxSize = new Vector3(collider.bounds.size.x * 0.9f, groundCheckDistance * 2f, 0.1f);
+
+                Gizmos.color = isGrounded ? Color.green : Color.red;
+                Gizmos.DrawWireCube(boxCenter + Vector3.down * groundCheckDistance * 0.5f, boxSize);
+            }
         }
 #endif
     }
