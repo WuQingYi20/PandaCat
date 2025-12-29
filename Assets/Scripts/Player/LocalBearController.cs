@@ -280,6 +280,27 @@ namespace BearCar.Player
         }
 
         /// <summary>
+        /// 传送完成后调用 - 重置相关状态
+        /// </summary>
+        public void OnTeleported()
+        {
+            // 如果正在吸附状态，传送后脱离
+            if (IsAttached)
+            {
+                DetachFromCart();
+            }
+
+            // 确保物理设置正确
+            if (rb != null)
+            {
+                rb.bodyType = RigidbodyType2D.Dynamic;
+                // 重力会由JumpSystem的OnTeleported处理
+            }
+
+            Debug.Log($"[LocalBear] Player {PlayerIndex} 传送完成，状态已重置");
+        }
+
+        /// <summary>
         /// 当玩家使用道具时调用
         /// </summary>
         public void OnItemUsed(ItemData item)
