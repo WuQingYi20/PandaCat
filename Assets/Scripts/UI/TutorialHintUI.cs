@@ -165,8 +165,10 @@ namespace BearCar.UI
 
         private void DrawPlayerHint(LocalBearController player, int playerIndex)
         {
+            if (Camera.main == null) return;
+
             // 计算屏幕位置（玩家头顶上方）
-            Vector3 worldPos = player.transform.position + Vector3.up * 2f;
+            Vector3 worldPos = player.transform.position + Vector3.up * 1.8f;
             Vector3 screenPos = Camera.main.WorldToScreenPoint(worldPos);
 
             // 转换为 GUI 坐标
@@ -175,34 +177,39 @@ namespace BearCar.UI
             // 如果在屏幕外，不绘制
             if (screenPos.z < 0) return;
 
-            // 获取按键名称
+            // 获取按键名称 - 根据玩家颜色/索引
             string grabKey, pushKey;
+            Color playerColor;
+            string playerName;
+
             if (playerIndex == 0)
             {
                 grabKey = "E";
                 pushKey = "A/D";
+                playerColor = new Color(0.3f, 0.9f, 0.4f); // 绿色
+                playerName = "P1";
             }
             else
             {
                 grabKey = "Enter";
                 pushKey = "←/→";
+                playerColor = new Color(0.9f, 0.4f, 0.3f); // 红色
+                playerName = "P2";
             }
 
             // 根据状态显示不同提示
-            string hintText;
             string keyText;
+            string actionText;
 
             if (!player.IsAttached)
             {
-                hintText = "靠近车辆，按";
-                keyText = $" [{grabKey}] ";
-                hintText += "抓住车";
+                keyText = grabKey;
+                actionText = "抓车";
             }
             else if (!player.IsPushing)
             {
-                hintText = "按";
-                keyText = $" [{pushKey}] ";
-                hintText += "推车";
+                keyText = pushKey;
+                actionText = "推车";
             }
             else
             {
@@ -210,8 +217,8 @@ namespace BearCar.UI
             }
 
             // 计算提示框大小
-            float boxWidth = 180f;
-            float boxHeight = 50f;
+            float boxWidth = 140f;
+            float boxHeight = 45f;
             Rect boxRect = new Rect(
                 screenPos.x - boxWidth / 2,
                 screenPos.y - boxHeight / 2,
@@ -219,34 +226,43 @@ namespace BearCar.UI
                 boxHeight
             );
 
-            // 设置透明度
-            Color originalBg = GUI.backgroundColor;
-            GUI.backgroundColor = new Color(1, 1, 1, hintAlpha[playerIndex]);
+            float alpha = hintAlpha[playerIndex];
 
-            // 绘制背景
-            GUI.DrawTexture(boxRect, bgTexture);
+            // 绘制背景（带玩家颜色边框）
+            Color bgColor = new Color(0, 0, 0, 0.75f * alpha);
+            Color borderColor = new Color(playerColor.r, playerColor.g, playerColor.b, alpha);
 
-            // 绘制文字 - 分成三部分显示
-            var tempHintStyle = new GUIStyle(hintStyle);
-            var tempKeyStyle = new GUIStyle(keyStyle);
-            tempHintStyle.normal.textColor = new Color(textColor.r, textColor.g, textColor.b, hintAlpha[playerIndex]);
-            tempKeyStyle.normal.textColor = new Color(keyColor.r, keyColor.g, keyColor.b, hintAlpha[playerIndex]);
+            // 边框
+            DrawRect(new Rect(boxRect.x - 2, boxRect.y - 2, boxWidth + 4, boxHeight + 4), borderColor);
+            // 背景
+            DrawRect(boxRect, bgColor);
 
-            // 简化：整行显示
-            string fullText = player.IsAttached ? $"按 {keyText} 推车" : $"按 {keyText} 抓车";
-            GUI.Label(boxRect, fullText, tempHintStyle);
+            // 绘制文字
+            var tempStyle = new GUIStyle(hintStyle);
+            tempStyle.normal.textColor = new Color(1, 1, 1, alpha);
+            tempStyle.fontSize = 14;
 
-            // 绘制按键高亮
-            float keyWidth = keyStyle.CalcSize(new GUIContent(keyText)).x;
-            Rect keyRect = new Rect(
-                screenPos.x - keyWidth / 2,
-                screenPos.y - 12,
-                keyWidth,
-                24
-            );
-            GUI.Label(keyRect, keyText, tempKeyStyle);
+            // 第一行：按键
+            var keyDisplayStyle = new GUIStyle(keyStyle);
+            keyDisplayStyle.normal.textColor = new Color(keyColor.r, keyColor.g, keyColor.b, alpha);
+            keyDisplayStyle.fontSize = 18;
+            keyDisplayStyle.alignment = TextAnchor.MiddleCenter;
 
-            GUI.backgroundColor = originalBg;
+            Rect keyRect = new Rect(boxRect.x, boxRect.y + 2, boxWidth, 24);
+            GUI.Label(keyRect, $"[ {keyText} ]", keyDisplayStyle);
+
+            // 第二行：动作
+            Rect actionRect = new Rect(boxRect.x, boxRect.y + 24, boxWidth, 20);
+            tempStyle.alignment = TextAnchor.MiddleCenter;
+            GUI.Label(actionRect, actionText, tempStyle);
+        }
+
+        private void DrawRect(Rect rect, Color color)
+        {
+            Color oldColor = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = oldColor;
         }
 
         /// <summary>

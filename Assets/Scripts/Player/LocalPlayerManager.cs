@@ -3,6 +3,7 @@ using UnityEngine;
 using Unity.Netcode;
 using BearCar.Cart;
 using BearCar.Item;
+using BearCar.UI;
 
 namespace BearCar.Player
 {
@@ -114,7 +115,8 @@ namespace BearCar.Player
                 inventoryObj.AddComponent<InventoryUI>();
                 inventoryObj.AddComponent<ItemEffectHandler>();
                 inventoryObj.AddComponent<ItemEffectLog>();
-                inventoryObj.AddComponent<BearCar.UI.ComboHintUI>(); // 添加组合提示UI
+                inventoryObj.AddComponent<ComboHintUI>(); // 添加组合提示UI
+                inventoryObj.AddComponent<TutorialHintUI>(); // 添加新手教程提示
                 Debug.Log("[LocalPlayerManager] 道具系统已创建");
 
                 // 添加测试道具以验证UI工作
@@ -132,10 +134,17 @@ namespace BearCar.Player
                 }
 
                 // 确保 ComboHintUI 存在
-                if (inventoryObj.GetComponent<BearCar.UI.ComboHintUI>() == null)
+                if (inventoryObj.GetComponent<ComboHintUI>() == null)
                 {
-                    inventoryObj.AddComponent<BearCar.UI.ComboHintUI>();
+                    inventoryObj.AddComponent<ComboHintUI>();
                     Debug.Log("[LocalPlayerManager] ComboHintUI 已添加到现有道具系统");
+                }
+
+                // 确保 TutorialHintUI 存在
+                if (inventoryObj.GetComponent<TutorialHintUI>() == null)
+                {
+                    inventoryObj.AddComponent<TutorialHintUI>();
+                    Debug.Log("[LocalPlayerManager] TutorialHintUI 已添加到现有道具系统");
                 }
             }
 
